@@ -393,6 +393,30 @@ src/MAPFSolver.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/MAPFSolver.cpp.s
 .PHONY : src/MAPFSolver.cpp.s
 
+src/MapSystem.o: src/MapSystem.cpp.o
+.PHONY : src/MapSystem.o
+
+# target to build an object file
+src/MapSystem.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/MapSystem.cpp.o
+.PHONY : src/MapSystem.cpp.o
+
+src/MapSystem.i: src/MapSystem.cpp.i
+.PHONY : src/MapSystem.i
+
+# target to preprocess a source file
+src/MapSystem.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/MapSystem.cpp.i
+.PHONY : src/MapSystem.cpp.i
+
+src/MapSystem.s: src/MapSystem.cpp.s
+.PHONY : src/MapSystem.s
+
+# target to generate assembly for a file
+src/MapSystem.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/MapSystem.cpp.s
+.PHONY : src/MapSystem.cpp.s
+
 src/OnlineGraph.o: src/OnlineGraph.cpp.o
 .PHONY : src/OnlineGraph.o
 
@@ -843,6 +867,9 @@ help:
 	@echo "... src/MAPFSolver.o"
 	@echo "... src/MAPFSolver.i"
 	@echo "... src/MAPFSolver.s"
+	@echo "... src/MapSystem.o"
+	@echo "... src/MapSystem.i"
+	@echo "... src/MapSystem.s"
 	@echo "... src/OnlineGraph.o"
 	@echo "... src/OnlineGraph.i"
 	@echo "... src/OnlineGraph.s"

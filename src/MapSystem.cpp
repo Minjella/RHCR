@@ -1,0 +1,368 @@
+#include "MapSystem.h"
+#include "Section.h"
+#include <iomanip>
+#include <iostream>
+#include <memory>
+
+
+MapSystem::MapSystem() {
+    initialize_templates();
+}
+
+MapSystem::~MapSystem() {
+    cleanup();
+}
+
+void MapSystem::initialize_templates() {
+    templates[SectionType::Eject_CW]        = std::make_shared<SectionTemplate>(SectionType::Eject_CW, 8);
+    templates[SectionType::Eject_CCW]       = std::make_shared<SectionTemplate>(SectionType::Eject_CCW, 8);
+    templates[SectionType::Eject_UP]        = std::make_shared<SectionTemplate>(SectionType::Eject_UP, 8);
+    templates[SectionType::Eject_DOWN]      = std::make_shared<SectionTemplate>(SectionType::Eject_DOWN, 8);
+    templates[SectionType::Induct_C_BOTTOM] = std::make_shared<SectionTemplate>(SectionType::Induct_C_BOTTOM, 6);
+    templates[SectionType::Induct_N_BOTTOM] = std::make_shared<SectionTemplate>(SectionType::Induct_N_BOTTOM, 6);
+    templates[SectionType::Induct_C_TOP]    = std::make_shared<SectionTemplate>(SectionType::Induct_C_TOP, 6);
+    templates[SectionType::Induct_N_TOP]    = std::make_shared<SectionTemplate>(SectionType::Induct_N_TOP, 6);
+    templates[SectionType::Travel_LEFT_BOTTOM] = std::make_shared<SectionTemplate>(SectionType::Travel_LEFT_BOTTOM, 3);
+    templates[SectionType::Travel_LEFT_TOP] = std::make_shared<SectionTemplate>(SectionType::Travel_LEFT_TOP, 3);
+    templates[SectionType::Travel_RIGHT_BOTTOM]    = std::make_shared<SectionTemplate>(SectionType::Travel_RIGHT_BOTTOM, 3);
+    templates[SectionType::Travel_RIGHT_TOP]    = std::make_shared<SectionTemplate>(SectionType::Travel_RIGHT_TOP, 3);
+    templates[SectionType::Corner_LEFT_BOTTOM] = std::make_shared<SectionTemplate>(SectionType::Corner_LEFT_BOTTOM, 1);
+    templates[SectionType::Corner_LEFT_TOP] = std::make_shared<SectionTemplate>(SectionType::Corner_LEFT_TOP, 1);
+    templates[SectionType::Corner_RIGHT_BOTTOM]    = std::make_shared<SectionTemplate>(SectionType::Corner_RIGHT_BOTTOM, 1);
+    templates[SectionType::Corner_RIGHT_TOP]    = std::make_shared<SectionTemplate>(SectionType::Corner_RIGHT_TOP, 1);
+
+    cout << "[MapSystem] Templates Initialized." << endl;
+}
+
+void MapSystem::cleanup() {
+    for (auto& pair : sections) {
+        delete pair.second; // new로 생성한 Section 객체 해제
+    }
+    sections.clear();
+}
+
+Section* MapSystem::add_section(int grid_x, int grid_y, int anchor_x, int anchor_y, SectionType type) {
+    
+    if (sections.find({grid_x, grid_y}) != sections.end()) {
+        std::cerr << "[Error] Section already exists at (" << grid_x << ", " << grid_y << ")" << std::endl;
+        return nullptr;
+    }
+
+    if (templates.find(type) == templates.end()) {
+        std::cerr << "[Error] Unknown Section Type!" << std::endl;
+        return nullptr;
+    }
+
+    int section_id = (grid_y * 1000) + grid_x;
+
+    Section* new_section = new Section(section_id, templates[type].get(), grid_x, grid_y, anchor_x, anchor_y);
+    
+    // 맵에 등록
+    sections[{grid_x, grid_y}] = new_section;
+    sections_by_id[section_id] = new_section;
+    
+    // 범위 갱신
+    if (grid_x > max_grid_x) max_grid_x = grid_x;
+    if (grid_y > max_grid_y) max_grid_y = grid_y;
+
+    int w = new_section->info->width;
+    int h = new_section->info->height;
+
+    for (int dx = 0; dx < w; ++dx) {
+        for (int dy = 0; dy < h; ++dy) {
+            int current_x = anchor_x + dx;
+            int current_y = anchor_y + dy;
+
+            // (current_x, current_y) 칸의 주인은 new_sec이다! 라고 등록
+            cell_registry[{current_x, current_y}] = new_section;
+        }
+    }
+
+    return new_section;
+}
+
+void MapSystem::link_all_sections() {
+    cout << "[MapSystem] Linking Sections..." << endl;
+
+
+    // 0:East, 1:South, 2:West, 3:North
+    int dx[] = {1, 0, -1, 0};
+    int dy[] = {0, -1, 0, 1};
+
+    for (auto& item : sections) {
+        Section* current = item.second;
+        int cx = current->grid_x;
+        int cy = current->grid_y;
+
+        for (int dir = 0; dir < 4; dir++) {
+            int nx = cx + dx[dir];
+            int ny = cy + dy[dir];
+
+            // 이웃 검색
+
+            auto it = sections.find({nx, ny});
+            if (it != sections.end()) {
+                Section* neighbor = it->second;
+                try_connect(current, neighbor, dir);
+            }
+        }
+    }
+    cout << "[MapSystem] Linking Complete." << endl;
+}
+
+Section* MapSystem::get_section(int gx, int gy) {
+    auto it = sections.find({gx, gy});
+    if (it != sections.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+void MapSystem::try_connect(Section* from, Section* to, int dir_from_to) {
+    // 반대 방향 (to 기준 from의 방향)
+    int dir_to_from = (dir_from_to + 2) % 4;
+
+    // 템플릿의 방향 정보 참조
+    // (Section -> SectionTemplate -> vector 접근)
+    int exit_idx = from->info->exit_cells_by_dir[dir_from_to];
+    int entry_idx = to->info->entry_cells_by_dir[dir_to_from];
+
+    // 둘 다 연결 가능한 포트가 있다면 연결
+    if (exit_idx != -1 && entry_idx != -1) {
+        if (dir_from_to == 1 || dir_from_to == 3){
+            if ((exit_idx % 3) == (entry_idx % 3)){
+                from->neighbors[exit_idx].push_back({to, entry_idx});
+            }
+        }
+        else{
+            if (exit_idx / 3 == entry_idx / 3){
+                from->neighbors[exit_idx].push_back({to, entry_idx});
+            }
+        }
+        
+        
+        // (디버그 출력)
+        // cout << "Link: Sec " << from->id << " -> Sec " << to->id << endl;
+    }
+}
+
+void MapSystem::build_procedural_map(int grid_cols, int grid_rows) {
+    SectionType type = SectionType::Eject_CW;
+    const int E_WIDTH = 3;
+    const int E_HEIGHT = 3;
+    int logical_rows = (grid_rows-4)/E_HEIGHT + 2;
+    int logical_cols = (grid_cols-2)/E_WIDTH + 2;
+    cout << "[MapSystem] Generating Procedural Map" << endl;
+    cout << "  - Raw Grid: " << grid_cols << " x " << grid_rows << endl;
+    cout << "  - Logical:  " << logical_cols << " x " << logical_rows << endl;
+    
+    int current_anchor_y = 0;
+    
+
+    for (int ly = 0; ly < logical_rows; ++ly) {
+        int current_anchor_x = 0;
+        int max_row_height = 0;
+
+        // [행 타입 판별]
+        bool is_bottom_row = (ly == 0);
+        bool is_top_row = (ly == logical_rows - 1);
+        
+        // 중간 행 패턴 결정 (이미지 구조에 맞춤)
+        // Row 1 (바닥 바로 위): Travel_LEFT_BOTTOM + Eject_CCW ...
+        // Row 2: Travel_LEFT_TOP + Eject_DOWN ...
+        // 이를 위해 (ly % 2)로 분기 처리
+        bool is_ccw_row = (ly % 2 != 0); // 짝수 행이라 가정 (조정 가능)
+
+        for (int lx = 0; lx < logical_cols; ++lx) {
+            SectionType type;
+            int width = 3;  // 기본 너비
+            int height = 3; // 기본 높이
+
+            // -------------------------------------------------
+            // 1. 왼쪽 가장자리 (Left Edge, x=0)
+            // -------------------------------------------------
+            if (lx == 0) {
+                width = 1; // 1x3 크기 가정
+                if (is_bottom_row) type = SectionType::Corner_LEFT_BOTTOM;
+                else if (is_top_row) type = SectionType::Corner_LEFT_TOP;
+                else {
+                    // 중간 행: 교차 패턴
+                    if (is_ccw_row) type = SectionType::Travel_LEFT_BOTTOM;
+                    else type = SectionType::Travel_LEFT_TOP;
+                }
+            }
+            // -------------------------------------------------
+            // 2. 오른쪽 가장자리 (Right Edge, x=end)
+            // -------------------------------------------------
+            else if (lx == logical_cols - 1) {
+                width = 1;
+                if (is_bottom_row) type = SectionType::Corner_RIGHT_BOTTOM;
+                else if (is_top_row) type = SectionType::Corner_RIGHT_TOP;
+                else {
+                    // 중간 행: 교차 패턴
+                    if (is_ccw_row) type = SectionType::Travel_RIGHT_BOTTOM;
+                    else type = SectionType::Travel_RIGHT_TOP;
+                }
+            }
+            // -------------------------------------------------
+            // 3. 중앙 영역 (Center Area)
+            // -------------------------------------------------
+            else {
+                // 패턴 인덱스 (0, 1, 0, 1...) : Induct나 Eject가 2개씩 짝지어 반복됨
+                // lx=1부터 시작하므로 (lx-1)을 해줌
+                bool is_even_col = ((lx - 1) % 2 == 0);
+
+                if (is_bottom_row) {
+                    // [BOTTOM] Induct_N, Induct_C 반복
+                    width = 3; // Eject와 열을 맞추기 위해 3으로 설정 (실제 물리폭 2라면 조정 필요)
+                    if (is_even_col) type = SectionType::Induct_N_BOTTOM;
+                    else type = SectionType::Induct_C_BOTTOM;
+                }
+                else if (is_top_row) {
+                    // [TOP] Induct_N, Induct_C 반복
+                    width = 3; 
+                    if (is_even_col) type = SectionType::Induct_N_TOP;
+                    else type = SectionType::Induct_C_TOP;
+                }
+                else {
+                    // [MIDDLE] Eject 패턴
+                    if (is_ccw_row) {
+                        // 이미지: Travel_BOTTOM 줄에는 [Eject_CCW, Eject_UP]
+                        if (is_even_col) type = SectionType::Eject_CCW;
+                        else type = SectionType::Eject_UP;
+                    } 
+                    else {
+                        // 이미지: Travel_TOP 줄에는 [Eject_DOWN, Eject_CW]
+                        if (is_even_col) type = SectionType::Eject_DOWN;
+                        else type = SectionType::Eject_CW;
+                    }
+                }
+            }
+
+            // -------------------------------------------------
+            // 섹션 생성 및 좌표 누적
+            // -------------------------------------------------
+            Section* new_section = add_section(lx, ly, current_anchor_x, current_anchor_y, type);
+            width = new_section->info->width;
+            height = new_section->info->height;
+
+
+            current_anchor_x += width;
+            if (height > max_row_height) max_row_height = height;
+        }
+
+        current_anchor_y += max_row_height;
+ 
+    }
+
+    // 연결 수행
+    link_all_sections();
+}
+
+pair<Section*, int> MapSystem::get_section_at_grid(int grid_x, int grid_y) {
+    if (cell_registry.find({grid_x, grid_y}) != cell_registry.end()) {
+        Section* cur_section = cell_registry[{grid_x, grid_y}];
+        int grid_diff_x = grid_x - cur_section->anchor_x;
+        int grid_diff_y = grid_y - cur_section->anchor_y;
+        int index = (-grid_diff_y) * 3 + grid_diff_x;
+        return {cell_registry[{grid_x, grid_y}], index};
+    }
+    return {nullptr, -1}; // 빈 땅(Obstacle 등)
+}
+
+string get_type_name(SectionType type) {
+    switch (type) {
+        case SectionType::Eject_CW:   return "E_CW";
+        case SectionType::Eject_CCW:  return "E_CCW";
+        case SectionType::Eject_DOWN: return "E_DOWN";
+        case SectionType::Eject_UP:   return "E_UP";
+        case SectionType::Induct_N_TOP: return "I_N_T";
+        case SectionType::Induct_C_TOP:    return "I_N_T";
+        case SectionType::Induct_N_BOTTOM:    return "I_N_B";
+        case SectionType::Induct_C_BOTTOM:    return "I_C_B";
+        case SectionType::Travel_LEFT_BOTTOM: return "T_L_B";
+        case SectionType::Travel_LEFT_TOP:    return "T_L_T";
+        case SectionType::Travel_RIGHT_BOTTOM:    return "T_R_B";
+        case SectionType::Travel_RIGHT_TOP:    return "T_R_T";
+        case SectionType::Corner_LEFT_BOTTOM: return "C_L_B";
+        case SectionType::Corner_LEFT_TOP:    return "C_L_T";
+        case SectionType::Corner_RIGHT_BOTTOM:    return "C_R_B";
+        case SectionType::Corner_RIGHT_TOP:    return "C_R_T";
+        
+
+        // ... 필요한 다른 타입들도 추가 가능
+        default: return "Other";
+    }
+}
+
+/*
+int main() {
+    // 1. 시스템 초기화
+    MapSystem mapSys;
+
+    // 2. 템플릿 등록 (테스트를 위해 실제 템플릿들이 등록되어 있어야 합니다)
+    // 예: mapSys.register_template(SectionType::Eject_CW, 3, 3, ...);
+    cout << "[Step 1] Templates initialized." << endl;
+
+    // 3. 절차적 맵 생성 (37 x 77 그리드 기준)
+    cout << "[Step 2] Building procedural map (37x77)..." << endl;
+    mapSys.build_procedural_map(77, 37);
+
+    // 4. 결과 검증 출력
+    cout << "\n[Step 3] Verification - Section List (Partial)" << endl;
+    cout << "---------------------------------------------------------------------------------------------------" << endl;
+    cout << setw(6) << "ID" << setw(12) << "Logical(X,Y)" << setw(13) << "Anchor(X,Y)" 
+         << setw(12) << "Type" << "  |  " << "Neighbors (Port:TargetID)" << endl;
+    cout << "---------------------------------------------------------------------------------------------------" << endl;
+
+    int count = 0;
+    auto& all_sections = mapSys.get_sections(); // Getter 사용
+
+    for (auto const& [pos, sec] : all_sections) {
+        // 너무 많으면 처음 15개와 마지막 5개만 출력
+        if (count < 30 || count > (int)all_sections.size() - 30) {
+            
+            // [수정 1] ID, 좌표 출력
+            cout << setw(6) << sec->id 
+                 << setw(5) << "(" << pos.first << "," << pos.second << ")"
+                 << setw(8) << "(" << sec->anchor_x << "," << sec->anchor_y << ")";
+
+            // [수정 2] sec->info->type 접근
+            if (sec->info) {
+                cout << setw(12) << get_type_name(sec->info->type);
+            } else {
+                cout << setw(12) << "No Info";
+            }
+
+            cout << "  |  ";
+
+            // [수정 3] Neighbors 출력 (PortConnection 구조체 반영)
+            if (sec->neighbors.empty()) {
+                cout << "None";
+            } else {
+                for (auto const& [exit_idx, conn_list] : sec->neighbors) {
+                    // conn_list는 이제 'PortConnection' 하나가 아니라 'vector<PortConnection>' 입니다.
+                    // 그래서 리스트 안을 한 번 더 돌아야 합니다.
+                    for (auto const& conn : conn_list) {
+                        if (conn.target_sec != nullptr) {
+                            cout << "[" << exit_idx << ":" << conn.target_sec->id << "] ";
+                        }
+                    }
+                }
+            }
+            cout << endl;
+
+        } else if (count == 15) {
+            cout << "  ... (middle sections omitted) ..." << endl;
+        }
+        count++;
+    }
+    
+    cout << "---------------------------------------------------------------------------------------------------" << endl;
+    cout << "Total Sections Generated: " << all_sections.size() << endl;
+
+    return 0;
+}
+
+*/
+
