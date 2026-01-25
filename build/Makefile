@@ -633,6 +633,30 @@ src/Section.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/Section.cpp.s
 .PHONY : src/Section.cpp.s
 
+src/SectionState.o: src/SectionState.cpp.o
+.PHONY : src/SectionState.o
+
+# target to build an object file
+src/SectionState.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/SectionState.cpp.o
+.PHONY : src/SectionState.cpp.o
+
+src/SectionState.i: src/SectionState.cpp.i
+.PHONY : src/SectionState.i
+
+# target to preprocess a source file
+src/SectionState.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/SectionState.cpp.i
+.PHONY : src/SectionState.cpp.i
+
+src/SectionState.s: src/SectionState.cpp.s
+.PHONY : src/SectionState.s
+
+# target to generate assembly for a file
+src/SectionState.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/SectionState.cpp.s
+.PHONY : src/SectionState.cpp.s
+
 src/SingleAgentSolver.o: src/SingleAgentSolver.cpp.o
 .PHONY : src/SingleAgentSolver.o
 
@@ -897,6 +921,9 @@ help:
 	@echo "... src/Section.o"
 	@echo "... src/Section.i"
 	@echo "... src/Section.s"
+	@echo "... src/SectionState.o"
+	@echo "... src/SectionState.i"
+	@echo "... src/SectionState.s"
 	@echo "... src/SingleAgentSolver.o"
 	@echo "... src/SingleAgentSolver.i"
 	@echo "... src/SingleAgentSolver.s"
