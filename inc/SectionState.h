@@ -10,6 +10,7 @@ struct SectionState
     int start_index;            // 섹션 진입 위치 (Grid Index)
     int exit_index;             // 섹션 진출 예정 위치 (없으면 -1)
     int timestep;               // start_index에 도착한 시간
+    int goal_index;             // goal location이 포함되어있다면 index, (없다면 -1)
     std::vector<int> wait_list; // 섹션 내 대기 정보 (대기한 index list)
 
     // 1. Wait 함수: "진입 시간을 1 늦춤" (즉, 이전 섹션에서 1틱 더 있다가 옴)
@@ -24,12 +25,13 @@ struct SectionState
             size_t start_hash = std::hash<int>()(s.start_index);
             size_t exit_hash = std::hash<int>()(s.exit_index);
             size_t time_hash = std::hash<int>()(s.timestep);
+            size_t goal_hash = std::hash<int>()(s.goal_index);
             
             // wait_list도 해시에 포함해야 정확하지만, 비용이 큽니다.
             // 우선 list의 사이즈 정도만 XOR 하거나, 필요 시 전체 순회해야 합니다.
             size_t wait_hash = std::hash<size_t>()(s.wait_list.size());
 
-            return (time_hash ^ (id_hash << 1) ^ (start_hash << 2) ^ (exit_hash << 3) ^ (wait_hash << 4));
+            return (time_hash ^ (id_hash << 1) ^ (start_hash << 2) ^ (exit_hash << 3) ^ (goal_hash << 4) ^ (wait_hash << 5));
         }
     };
 
@@ -39,6 +41,7 @@ struct SectionState
         start_index = other.start_index;
         exit_index = other.exit_index;
         timestep = other.timestep;
+        goal_index = other.goal_index;
         wait_list = other.wait_list; // 벡터 복사 발생
     }
 
@@ -49,6 +52,7 @@ struct SectionState
                start_index == other.start_index &&
                exit_index == other.exit_index &&
                timestep == other.timestep &&
+               goal_index == other.goal_index &&
                wait_list == other.wait_list;
     }
 
@@ -59,17 +63,17 @@ struct SectionState
 
     // 생성자
     SectionState() 
-        : section_id(-1), start_index(-1), exit_index(-1), timestep(-1) {}
+        : section_id(-1), start_index(-1), exit_index(-1), timestep(-1), goal_index(-1) {}
 
     // 기본 생성 (wait_list는 빈 상태)
     SectionState(int section_id, int start_index, int exit_index, int timestep)
         : section_id(section_id), start_index(start_index), 
-          exit_index(exit_index), timestep(timestep) {}
+          exit_index(exit_index), timestep(timestep), goal_index(-1) {}
 
     // 전체 생성
-    SectionState(int section_id, int start_index, int exit_index, int timestep, const std::vector<int>& waits)
+    SectionState(int section_id, int start_index, int exit_index, int timestep, int goal_index, const std::vector<int>& waits)
         : section_id(section_id), start_index(start_index), 
-          exit_index(exit_index), timestep(timestep), wait_list(waits) {}
+          exit_index(exit_index), timestep(timestep), goal_index(goal_index), wait_list(waits) {}
 };
 
 // 출력 연산자 정의

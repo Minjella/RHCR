@@ -13,7 +13,7 @@ SectionState SectionState::wait(int current_idx) const
 
     // 3. timestep(진입 시간)은 변하지 않음. 
     //    (진입은 이미 했고, 그 이후 과정에서 대기가 발생한 것이므로)
-    return SectionState(section_id, start_index, exit_index, timestep, next_wait_list); 
+    return SectionState(section_id, start_index, exit_index, timestep, goal_index, next_wait_list); 
 }
 
 std::ostream & operator << (std::ostream &out, const SectionState &s)
