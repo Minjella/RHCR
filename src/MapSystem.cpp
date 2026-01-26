@@ -1,5 +1,6 @@
 #include "MapSystem.h"
 #include "Section.h"
+#include "BasicGraph.h"
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -72,7 +73,7 @@ Section* MapSystem::add_section(int grid_x, int grid_y, int anchor_x, int anchor
         for (int dy = 0; dy < h; ++dy) {
             int current_x = anchor_x + dx;
             int current_y = anchor_y + dy;
-
+            //std::cout << " x : " << current_x << " y : " << current_y << std::endl;
             // (current_x, current_y) 칸의 주인은 new_sec이다! 라고 등록
             cell_registry[{current_x, current_y}] = new_section;
         }
@@ -150,8 +151,8 @@ void MapSystem::build_procedural_map(int grid_cols, int grid_rows) {
     SectionType type = SectionType::Eject_CW;
     const int E_WIDTH = 3;
     const int E_HEIGHT = 3;
-    int logical_rows = (grid_rows-4)/E_HEIGHT + 2;
-    int logical_cols = (grid_cols-2)/E_WIDTH + 2;
+    int logical_cols = (grid_cols-4)/E_HEIGHT + 2;
+    int logical_rows = (grid_rows-2)/E_WIDTH + 2;
     cout << "[MapSystem] Generating Procedural Map" << endl;
     cout << "  - Raw Grid: " << grid_cols << " x " << grid_rows << endl;
     cout << "  - Logical:  " << logical_cols << " x " << logical_rows << endl;
@@ -159,13 +160,13 @@ void MapSystem::build_procedural_map(int grid_cols, int grid_rows) {
     int current_anchor_y = 0;
     
 
-    for (int ly = 0; ly < logical_rows; ++ly) {
+    for (int ly = 0; ly < logical_cols; ++ly) {
         int current_anchor_x = 0;
         int max_row_height = 0;
 
         // [행 타입 판별]
         bool is_bottom_row = (ly == 0);
-        bool is_top_row = (ly == logical_rows - 1);
+        bool is_top_row = (ly == logical_cols - 1);
         
         // 중간 행 패턴 결정 (이미지 구조에 맞춤)
         // Row 1 (바닥 바로 위): Travel_LEFT_BOTTOM + Eject_CCW ...
@@ -173,7 +174,7 @@ void MapSystem::build_procedural_map(int grid_cols, int grid_rows) {
         // 이를 위해 (ly % 2)로 분기 처리
         bool is_ccw_row = (ly % 2 != 0); // 짝수 행이라 가정 (조정 가능)
 
-        for (int lx = 0; lx < logical_cols; ++lx) {
+        for (int lx = 0; lx < logical_rows; ++lx) {
             SectionType type;
             int width = 3;  // 기본 너비
             int height = 3; // 기본 높이
@@ -264,8 +265,52 @@ pair<Section*, int> MapSystem::get_section_at_grid(int grid_x, int grid_y) {
         Section* cur_section = cell_registry[{grid_x, grid_y}];
         int grid_diff_x = grid_x - cur_section->anchor_x;
         int grid_diff_y = grid_y - cur_section->anchor_y;
+
+        //std::cout << "grid_x : " << grid_x << " grid_ y : " << grid_y << std::endl;
+        //std::cout << "std_x : " << cur_section->anchor_x << " std_ y : " << cur_section->anchor_y << std::endl;
+        //std::cout << "diff_x : " << grid_diff_x << " diff_ y : " << grid_diff_y << std::endl;
+        /*
         int index = (-grid_diff_y) * 3 + grid_diff_x;
         return {cell_registry[{grid_x, grid_y}], index};
+        */
+            
+        if (grid_diff_x == 0){
+            if (grid_diff_y == 0){
+                return {cell_registry[{grid_x, grid_y}], 6};
+            }
+            else if (grid_diff_y == 1){
+                return {cell_registry[{grid_x, grid_y}], 3};
+            }
+            else if (grid_diff_y == 2){
+                return {cell_registry[{grid_x, grid_y}], 0};
+            }
+        }
+        else if (grid_diff_x == 1){
+            if (grid_diff_y == 0){
+                return {cell_registry[{grid_x, grid_y}], 7};
+            }
+            else if (grid_diff_y == 1){
+                return {cell_registry[{grid_x, grid_y}], 4};
+            }
+            else if (grid_diff_y == 2){
+                return {cell_registry[{grid_x, grid_y}], 1};
+            }
+        }
+        else if (grid_diff_x == 2){
+            if (grid_diff_y == 0){
+                return {cell_registry[{grid_x, grid_y}], 8};
+            }
+            else if (grid_diff_y == 1){
+                return {cell_registry[{grid_x, grid_y}], 5};
+            }
+            else if (grid_diff_y == 2){
+                return {cell_registry[{grid_x, grid_y}], 2};
+            }
+        }
+        else{
+            cout << "Something Wrong" << endl;
+            return {nullptr, -1};
+        }
     }
     return {nullptr, -1}; // 빈 땅(Obstacle 등)
 }

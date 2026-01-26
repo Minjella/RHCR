@@ -6,6 +6,8 @@
 #include "WHCAStar.h"
 #include "ECBS.h"
 #include "LRAStar.h"
+#include "SectionState.h"
+#include "MapSystem.h"
 
 
 class BasicSystem
@@ -57,6 +59,12 @@ public:
 	// unordered_set<int> held_endpoints;
     int timestep;
 
+
+    ///////////////////추가//////////////////////
+    vector<SectionState> start_sections;
+    vector<vector<pair<SectionState, int> > > goal_sections;
+    ///////////////////////////////////////////
+
     // record movements of drives
     std::vector<Path> paths;
     std::vector<std::list<std::pair<int, int> > > finished_tasks; // location + finish time
@@ -79,6 +87,10 @@ public:
 	bool load_records();
 	bool load_locations();
 
+    ///////////////////추가//////////////////////
+    void conversion_to_sections(MapSystem& mapSys, int current_time);
+    void print_conversion_debug(int grid_cols) const;
+    ///////////////////////////////////////////
 
 protected:
 	bool solve_by_WHCA(vector<Path>& planned_paths,

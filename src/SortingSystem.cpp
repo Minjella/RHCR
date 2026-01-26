@@ -5,6 +5,7 @@
 #include "WHCAStar.h"
 #include "ECBS.h"
 #include "LRAStar.h"
+#include "MapSystem.h"
 
 
 SortingSystem::SortingSystem(const SortingGrid& G, MAPFSolver& solver): BasicSystem(G, solver), c(8), G(G) {}
@@ -146,6 +147,16 @@ void SortingSystem::simulate(int simulation_time)
     this->simulation_time = simulation_time;
     initialize();
 	
+
+	///////////////// 추가 ////////////////////
+	MapSystem mapSys;
+	mapSys.build_procedural_map(G.get_cols(), G.get_rows());
+	conversion_to_sections(mapSys, 0);
+	//this->print_conversion_debug(G.get_cols());
+	///////////////////////////////////////////
+	
+
+	/*
 	for (; timestep < simulation_time; timestep += simulation_window)
 	{
 		std::cout << "Timestep " << timestep << std::endl;
@@ -183,6 +194,11 @@ void SortingSystem::simulate(int simulation_time)
     update_start_locations();
     std::cout << std::endl << "Done!" << std::endl;
     save_results();
+	
+	*/
+
+
+	
 }
 
 

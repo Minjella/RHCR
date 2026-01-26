@@ -1,6 +1,9 @@
 #include "BasicSystem.h"
 #include <stdlib.h>
 #include <boost/tokenizer.hpp>
+#include "Section.h"
+#include "MapSystem.h"
+
 
 
 BasicSystem::BasicSystem(const BasicGraph& G, MAPFSolver& solver): G(G), solver(solver), num_of_tasks(0) {}
@@ -825,3 +828,112 @@ bool BasicSystem::load_records()
 	return true;
 }
 
+void BasicSystem::conversion_to_sections(MapSystem& mapSys, int current_time) 
+{
+    int grid_cols = G.cols; // RHCR 그래프의 전체 너비 (MapSystem과 같아야 함)
+
+    start_sections.clear();
+    start_sections.resize(num_of_drives);
+    goal_sections.clear(); 
+    goal_sections.resize(num_of_drives);
+
+    for (int k = 0; k < num_of_drives; k++) 
+    {
+        // -------------------------------------------------------
+        // A. Start Location 변환
+        // -------------------------------------------------------
+        int start_id = starts[k].location;
+        
+        std::pair<Section*, int> start_info = mapSys.get_section_at_grid(start_id / grid_cols, start_id % grid_cols);
+
+        if (start_info.first != nullptr) {
+            start_sections[k] = SectionState(
+                start_info.first->id, 
+                start_info.second, 
+                -1, 
+                current_time
+            );
+        } else {
+            std::cerr << "Warning: Agent " << k << " Start ID " << start_id << " Invalid!" << std::endl;
+        }
+
+        // -------------------------------------------------------
+        // B. Goal Locations 변환 (여러 개일 수 있음)
+        // -------------------------------------------------------
+        // goal_locations[k] 안에 있는 모든 목표(pair<loc, time>)를 순회
+        for (const auto& goal : goal_locations[k]) 
+        {
+            int goal_loc_id = goal.first;  // 목표 위치
+            int goal_gen_time = goal.second; // 목표 생성 시간 (Generation Time)
+
+            std::pair<Section*, int> goal_info = mapSys.get_section_at_grid(goal_loc_id / grid_cols, goal_loc_id % grid_cols);
+
+            if (goal_info.first != nullptr) {
+                // 1. Goal에 대한 SectionState 생성
+                // (목표 지점의 timestep은 도착 예정 시간이 있다면 넣고, 모르면 -1)
+                SectionState goal_state(
+                    goal_info.first->id, 
+                    goal_info.second, // 목표 index
+                    -1,               
+                    -1                // State 내부 시간(도착시간)은 미정이면 -1
+                );
+                
+                // 2. { State, GenerationTime } 쌍으로 저장
+                goal_sections[k].push_back({ goal_state, goal_gen_time });
+                
+            } else {
+                std::cerr << "Warning: Agent " << k << " Goal ID " << goal_loc_id << " Invalid!" << std::endl;
+            }
+        }
+    }
+    cout << "--- Section Conversion Completed ---" << endl;
+}
+
+
+void BasicSystem::print_conversion_debug(int grid_cols) const
+{
+    std::cout << "\n==== Grid -> Section Conversion Debug ====\n";
+
+    for (int k = 0; k < num_of_drives; k++)
+    {
+        // ----- 원본 Start (grid) -----
+        int start_id = starts[k].location;
+        int sy = start_id % grid_cols;
+        int sx = start_id / grid_cols;
+
+        std::cout << "[Agent " << k << "]\n";
+        std::cout << "  Start(grid): id=" << start_id
+                  << " (x=" << sx << ", y=" << sy << ")\n";
+
+        // ----- 변환된 Start (section) -----
+        std::cout << "  Start(section): " << start_sections[k] << "\n";
+
+        // ----- 원본 Goals (grid) -----
+        std::cout << "  Goals(grid):\n";
+        for (const auto& goal : goal_locations[k])
+        {
+            int gid = goal.first;
+            int gen_t = goal.second;
+
+            int gy = gid % grid_cols;
+            int gx = gid / grid_cols;
+
+            std::cout << "    (gen_t=" << gen_t << ") id=" << gid
+                      << " (x=" << gx << ", y=" << gy << ")\n";
+        }
+
+        // ----- 변환된 Goals (section) -----
+        std::cout << "  Goals(section):\n";
+        for (const auto& gs : goal_sections[k])
+        {
+            const SectionState& s = gs.first;
+            int gen_t = gs.second;
+
+            std::cout << "    (gen_t=" << gen_t << ") " << s << "\n";
+        }
+
+        std::cout << "\n";
+    }
+
+    std::cout << "=========================================\n";
+}
