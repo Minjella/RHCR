@@ -195,7 +195,7 @@ void MapSystem::build_procedural_map(int grid_cols, int grid_rows) {
             // -------------------------------------------------
             // 2. 오른쪽 가장자리 (Right Edge, x=end)
             // -------------------------------------------------
-            else if (lx == logical_cols - 1) {
+            else if (lx == logical_rows - 1) {
                 width = 1;
                 if (is_bottom_row) type = SectionType::Corner_RIGHT_BOTTOM;
                 else if (is_top_row) type = SectionType::Corner_RIGHT_TOP;
@@ -340,7 +340,7 @@ string get_type_name(SectionType type) {
     }
 }
 
-/*
+/* 
 int main() {
     // 1. 시스템 초기화
     MapSystem mapSys;
@@ -351,13 +351,13 @@ int main() {
 
     // 3. 절차적 맵 생성 (37 x 77 그리드 기준)
     cout << "[Step 2] Building procedural map (37x77)..." << endl;
-    mapSys.build_procedural_map(77, 37);
+    mapSys.build_procedural_map(37, 77);
 
     // 4. 결과 검증 출력
     cout << "\n[Step 3] Verification - Section List (Partial)" << endl;
     cout << "---------------------------------------------------------------------------------------------------" << endl;
-    cout << setw(6) << "ID" << setw(12) << "Logical(X,Y)" << setw(13) << "Anchor(X,Y)" 
-         << setw(12) << "Type" << "  |  " << "Neighbors (Port:TargetID)" << endl;
+    cout << std::setw(6) << "ID" << std::setw(12) << "Logical(X,Y)" << std::setw(13) << "Anchor(X,Y)" 
+         << std::setw(12) << "Type" << "  |  " << "Neighbors (Port:TargetID)" << endl;
     cout << "---------------------------------------------------------------------------------------------------" << endl;
 
     int count = 0;
@@ -365,18 +365,18 @@ int main() {
 
     for (auto const& [pos, sec] : all_sections) {
         // 너무 많으면 처음 15개와 마지막 5개만 출력
-        if (count < 30 || count > (int)all_sections.size() - 30) {
+        if (count < 10 || count > (int)all_sections.size() - 350) {
             
             // [수정 1] ID, 좌표 출력
-            cout << setw(6) << sec->id 
-                 << setw(5) << "(" << pos.first << "," << pos.second << ")"
-                 << setw(8) << "(" << sec->anchor_x << "," << sec->anchor_y << ")";
+            cout << std::setw(6) << sec->id 
+                 << std::setw(5) << "(" << pos.first << "," << pos.second << ")"
+                 << std::setw(8) << "(" << sec->anchor_x << "," << sec->anchor_y << ")";
 
             // [수정 2] sec->info->type 접근
             if (sec->info) {
-                cout << setw(12) << get_type_name(sec->info->type);
+                cout << std::setw(12) << get_type_name(sec->info->type);
             } else {
-                cout << setw(12) << "No Info";
+                cout << std::setw(12) << "No Info";
             }
 
             cout << "  |  ";
@@ -408,6 +408,6 @@ int main() {
 
     return 0;
 }
+ */
 
-*/
 
