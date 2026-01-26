@@ -78,3 +78,5 @@ struct SectionState
 
 // 출력 연산자 정의
 std::ostream & operator << (std::ostream &out, const SectionState &s);
+
+typedef std::vector<SectionState> SectionPath;

@@ -561,6 +561,30 @@ src/PriorityGraph.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PriorityGraph.cpp.s
 .PHONY : src/PriorityGraph.cpp.s
 
+src/ReservationSection.o: src/ReservationSection.cpp.o
+.PHONY : src/ReservationSection.o
+
+# target to build an object file
+src/ReservationSection.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/ReservationSection.cpp.o
+.PHONY : src/ReservationSection.cpp.o
+
+src/ReservationSection.i: src/ReservationSection.cpp.i
+.PHONY : src/ReservationSection.i
+
+# target to preprocess a source file
+src/ReservationSection.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/ReservationSection.cpp.i
+.PHONY : src/ReservationSection.cpp.i
+
+src/ReservationSection.s: src/ReservationSection.cpp.s
+.PHONY : src/ReservationSection.s
+
+# target to generate assembly for a file
+src/ReservationSection.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/ReservationSection.cpp.s
+.PHONY : src/ReservationSection.cpp.s
+
 src/ReservationTable.o: src/ReservationTable.cpp.o
 .PHONY : src/ReservationTable.o
 
@@ -912,6 +936,9 @@ help:
 	@echo "... src/PriorityGraph.o"
 	@echo "... src/PriorityGraph.i"
 	@echo "... src/PriorityGraph.s"
+	@echo "... src/ReservationSection.o"
+	@echo "... src/ReservationSection.i"
+	@echo "... src/ReservationSection.s"
 	@echo "... src/ReservationTable.o"
 	@echo "... src/ReservationTable.i"
 	@echo "... src/ReservationTable.s"
