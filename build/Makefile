@@ -633,6 +633,30 @@ src/SIPP.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/SIPP.cpp.s
 .PHONY : src/SIPP.cpp.s
 
+src/SIPPSection.o: src/SIPPSection.cpp.o
+.PHONY : src/SIPPSection.o
+
+# target to build an object file
+src/SIPPSection.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/SIPPSection.cpp.o
+.PHONY : src/SIPPSection.cpp.o
+
+src/SIPPSection.i: src/SIPPSection.cpp.i
+.PHONY : src/SIPPSection.i
+
+# target to preprocess a source file
+src/SIPPSection.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/SIPPSection.cpp.i
+.PHONY : src/SIPPSection.cpp.i
+
+src/SIPPSection.s: src/SIPPSection.cpp.s
+.PHONY : src/SIPPSection.s
+
+# target to generate assembly for a file
+src/SIPPSection.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/SIPPSection.cpp.s
+.PHONY : src/SIPPSection.cpp.s
+
 src/Section.o: src/Section.cpp.o
 .PHONY : src/Section.o
 
@@ -945,6 +969,9 @@ help:
 	@echo "... src/SIPP.o"
 	@echo "... src/SIPP.i"
 	@echo "... src/SIPP.s"
+	@echo "... src/SIPPSection.o"
+	@echo "... src/SIPPSection.i"
+	@echo "... src/SIPPSection.s"
 	@echo "... src/Section.o"
 	@echo "... src/Section.i"
 	@echo "... src/Section.s"

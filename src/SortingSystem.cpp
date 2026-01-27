@@ -156,7 +156,7 @@ void SortingSystem::simulate(int simulation_time)
 	///////////////////////////////////////////
 	
 
-	/*
+	
 	for (; timestep < simulation_time; timestep += simulation_window)
 	{
 		std::cout << "Timestep " << timestep << std::endl;
@@ -191,11 +191,11 @@ void SortingSystem::simulate(int simulation_time)
 		}
 	}
 
-    update_start_locations();
-    std::cout << std::endl << "Done!" << std::endl;
-    save_results();
+	update_start_locations();
+	std::cout << std::endl << "Done!" << std::endl;
+	save_results();
+
 	
-	*/
 
 
 	

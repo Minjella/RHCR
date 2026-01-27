@@ -4,7 +4,15 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <list>
+#include <tuple>
+#include <map>
 #include "PriorityGraph.h"
+
+// <start_time, end_time, current_capacity>
+typedef std::tuple<int, int, int> SecInterval;
+
+static constexpr int MAX_TIME_LIMIT = (1 << 14) -1;
 
 class ReservationSection {
     private:
@@ -38,8 +46,11 @@ class ReservationSection {
         // Key: Combined(Time, Section, Cell) -> Value: AgentID
         std::unordered_map<uint32_t, int> cell_table; 
         
-        // Key: Combined(Time, Section) -> Value: Count
-        std::unordered_map<uint32_t, int> section_count_table;
+        // SectionID -> { Time -> CountDelta }
+        std::unordered_map<int, std::map<int, int>> section_timeline;
+
+        // SIT (Safe Interval Table) SectionID -> Value
+        std::unordered_map<int, std::list<SecInterval>> sit_cache;
 
         // Key: SectionKey (Time | Section) -> Value: Agent ID vector
         // CBS에서 제약을 걸거나, 맵의 문이 닫히는 경우 사용
@@ -49,12 +60,12 @@ class ReservationSection {
     public:
         ReservationSection(){
             cell_table.reserve(10000);
-            section_count_table.reserve(5000);
+            // section_count_table.reserve(5000);
         }
 
-        void add_reservation(int agent_id, int time, int section_id, int cell_idx);
+        void add_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
 
-        void remove_reservation(int agent_id, int time, int section_id, int cell_idx);
+        void remove_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
 
         // 충돌 체크 (PBS 우선순위 로직 포함)
         // True: 지나갈 수 있음, False: 막힘
@@ -72,4 +83,10 @@ class ReservationSection {
 
         int get_congestion_count(int time, int section_id) const;
 
+        void update_sit(int section_id, int capacity);
+
+        void merge_intervals(std::list<SecInterval>& intervals) const;
+
+        std::list<SecInterval> get_safe_intervals(int section_id, int capacity);
+        
 };
