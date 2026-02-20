@@ -9,8 +9,8 @@
 #include <map>
 #include "PriorityGraph.h"
 
-// <start_time, end_time, current_capacity>
-typedef std::tuple<int, int, int> SecInterval;
+// // <start_time, end_time, current_capacity>
+// typedef std::tuple<int, int, int> SecInterval;
 
 static constexpr int MAX_TIME_LIMIT = (1 << 14) -1;
 
@@ -83,9 +83,9 @@ class ReservationSection {
 
         int get_congestion_count(int time, int section_id) const;
 
-        void update_sit(int section_id, int capacity);
+        // void update_sit(int section_id, int capacity);
 
-        void merge_intervals(std::list<SecInterval>& intervals) const;
+        // void merge_intervals(std::list<SecInterval>& intervals) const;
 
         std::list<SecInterval> get_safe_intervals(int section_id, int capacity);
         

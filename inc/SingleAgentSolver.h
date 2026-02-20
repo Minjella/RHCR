@@ -27,6 +27,19 @@ public:
 		const vector<pair<int, int> >& goal_location) const;
 
     virtual Path run(const BasicGraph& G, const State& start, const vector<pair<int, int> >& goal_location, ReservationTable& RT) = 0;
+	
+	virtual Path run(const BasicGraph& G, const State& start, 
+                     const vector<pair<int, int> >& goal_location, 
+                     class ReservationSection& rs,      // class 키워드로 전방 선언
+                     const class PriorityGraph* pg,     // class 키워드로 전방 선언
+                     int agent_id, 
+                     int capacity) 
+    {
+        std::cerr << "[Error] This solver does not support ReservationSection!" << std::endl;
+        exit(1);
+        return Path(); // 컴파일 통과용 빈 경로 반환
+    }
+	
 	virtual string getName() const = 0;
 	SingleAgentSolver(): suboptimal_bound(1), num_expanded(0), num_generated(0), min_f_val(0), num_of_conf(0) {}
     virtual ~SingleAgentSolver()= default;

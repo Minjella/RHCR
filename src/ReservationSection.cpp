@@ -45,7 +45,6 @@ void ReservationSection::remove_reservation(int agent_id, int start_time, int en
     // 1. Cell 점유 해제
     for (int t = start_time; t < end_time; ++t) {
         uint32_t c_key = make_cell_key(t, section_id, cell_idx);
-        cell_table[c_key] = agent_id; 
         auto it = cell_table.find(c_key);
         if (it != cell_table.end() && it->second == agent_id) {
             cell_table.erase(it);
@@ -62,31 +61,31 @@ void ReservationSection::remove_reservation(int agent_id, int start_time, int en
 }
 
 
-void ReservationSection::update_sit(int section_id, int capacity){
-    if (sit_cache.find(section_id) != sit_cache.end()) return;
+// void ReservationSection::update_sit(int section_id, int capacity){
+//     if (sit_cache.find(section_id) != sit_cache.end()) return;
 
-    auto& timeline = section_timeline[section_id];
-    std::list<SecInterval> intervals;
+//     auto& timeline = section_timeline[section_id];
+//     std::list<SecInterval> intervals;
 
-    int current_count = 0;
-    int last_time = 0;
+//     int current_count = 0;
+//     int last_time = 0;
 
-    // time: 변화 시점, delta: 인원수
-    for (auto const& [time, delta]: timeline){
-        // 새로운 이벤트 발생 전까지의 구간을 저장
-        // count < capacity 인 구간이 우리가 찾는 "Safe" 구간
-        intervals.emplace_back(last_time, time, current_count);
+//     // time: 변화 시점, delta: 인원수
+//     for (auto const& [time, delta]: timeline){
+//         // 새로운 이벤트 발생 전까지의 구간을 저장
+//         // count < capacity 인 구간이 우리가 찾는 "Safe" 구간
+//         intervals.emplace_back(last_time, time, current_count);
 
-        current_count += delta;
-        last_time = time;
+//         current_count += delta;
+//         last_time = time;
 
-        intervals.emplace_back(last_time, 2000000000, current_count);
+//         intervals.emplace_back(last_time, MAX_TIME_LIMIT, current_count);
 
-        merge_intervals(intervals);
+//         merge_intervals(intervals);
 
-        sit_cache[section_id] = intervals;
-    }
-}
+//         sit_cache[section_id] = intervals;
+//     }
+// }
 
 /* 
 bool ReservationSection::is_cell_available(int time, int section_id, int cell_idx, int my_agent_id, const PriorityGraph* pg) const {
@@ -256,24 +255,24 @@ std::list<SecInterval> ReservationSection::get_safe_intervals(int section_id, in
     return all_intervals;
 }
 
-void ReservationSection::merge_intervals(std::list<SecInterval>& intervals) const {
-    if (intervals.empty()) return;
-    intervals.sort([](const SecInterval& a, const SecInterval& b){
-        return std::get<0>(a) < std::get<0>(b);
-    });
+// void ReservationSection::merge_intervals(std::list<SecInterval>& intervals) const {
+//     if (intervals.empty()) return;
+//     intervals.sort([](const SecInterval& a, const SecInterval& b){
+//         return std::get<0>(a) < std::get<0>(b);
+//     });
 
-    auto it = intervals.begin();
-    auto next = std::next(it);
-    while (next != intervals.end()) {
-        int a0 = std::get<0>(*it), a1 = std::get<1>(*it), a2 = std::get<2>(*it);
-        int b0 = std::get<0>(*next), b1 = std::get<1>(*next), b2 = std::get<2>(*next);
+//     auto it = intervals.begin();
+//     auto next = std::next(it);
+//     while (next != intervals.end()) {
+//         int a0 = std::get<0>(*it), a1 = std::get<1>(*it), a2 = std::get<2>(*it);
+//         int b0 = std::get<0>(*next), b1 = std::get<1>(*next), b2 = std::get<2>(*next);
 
-        // 같은 “속성”(여기선 3번째 값)이면 인접/겹침 merge
-        if (a2 == b2 && b0 <= a1) {
-            std::get<1>(*it) = std::max(a1, b1);
-            next = intervals.erase(next);
-        } else {
-            ++it; ++next;
-        }
-    }
-}
+//         // 같은 “속성”(여기선 3번째 값)이면 인접/겹침 merge
+//         if (a2 == b2 && b0 <= a1) {
+//             std::get<1>(*it) = std::max(a1, b1);
+//             next = intervals.erase(next);
+//         } else {
+//             ++it; ++next;
+//         }
+//     }
+// }
