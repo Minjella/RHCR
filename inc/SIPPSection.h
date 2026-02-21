@@ -3,6 +3,7 @@
 #include "SingleAgentSolver.h"
 #include "ReservationSection.h"
 #include "SectionState.h"
+#include "MapSystem.h"
 #include "PriorityGraph.h" // PBS 연동용
 #include <boost/heap/fibonacci_heap.hpp>
 #include <boost/functional/hash.hpp> // boost::hash_combine 사용
@@ -110,20 +111,15 @@ public:
     // 기존 프레임워크가 실수로 옛날 방식으로 호출하면 에러를 뿜게 만듦
     Path run(const BasicGraph& G, const State& start, 
              const vector<pair<int, int>>& goal_location, 
-             ReservationTable& RT) override 
-    {
-        std::cerr << "[Error] SIPPSection은 ReservationTable을 사용하지 않습니다! 새로운 run을 호출하세요." << std::endl;
-        exit(1); 
-        return Path();
-    }
+             ReservationTable& RT) override;
 
     // 기존 ReservationTable 대신 우리가 만든 ReservationSection을 받음
-    SectionPath SIPPSection::run_section(const State& start, 
-                                     const vector<pair<int, int>>& goal_location,
+    SectionPath run_section(const SectionState& start_state, 
+                                     const vector<pair<SectionState, int>>& goal_sections, 
                                      ReservationSection& rs, 
-                                     int agent_id, int capacity, void* map_system_ptr);
+                                     int agent_id, int capacity, MapSystem* MapSys);
 
-    string getName() const { return "SIPPSection"; }
+    string getName() const override { return "SIPPSection"; }
     SIPPSection() : SingleAgentSolver() {}
 
 private:
@@ -133,9 +129,11 @@ private:
     // Closed List: RHCR 스타일로 unordered_set 사용
     unordered_set<SIPPNode*, SIPPNode::Hasher, SIPPNode::EqNode> allNodes_table;
 
-    void generate_node(const SecInterval& interval, SIPPNode* curr,
-                       int next_section_id, int next_start_index, int curr_exit_index, double travel_cost, int arrival_time, double h_val, int section_congestion, vector<int> wait_list;);
-    
+    void generate_node(const SecInterval& interval, SIPPNode* curr, 
+                                int next_section_id, int next_start_index, int curr_exit_index,
+                                const std::vector<int>& wait_list,
+                                double travel_cost, int arrival_time, double h_val, int section_congestion);
+
     SectionPath updatePath(const SIPPNode* goal);
 
     inline void releaseClosedListNodes();

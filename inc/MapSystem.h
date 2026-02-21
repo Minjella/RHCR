@@ -4,6 +4,7 @@
 #include <memory>
 #include <utility>
 #include "Section.h"
+#include "SectionState.h"
 
 
 class MapSystem {
@@ -13,7 +14,7 @@ class MapSystem {
 
         // 2. 실제 맵 데이터 (Key: 좌표, Value: 섹션 포인터)
         std::map<pair<int, int>, Section*> sections;
-        std::map<int, Section*> sections_by_id;
+        
         std::map<std::pair<int, int>, Section*> cell_registry;
 
 
@@ -22,6 +23,8 @@ class MapSystem {
         int max_grid_y = 0;
 
     public:
+        std::map<int, Section*> sections_by_id;
+        
         MapSystem();
         ~MapSystem();
 
@@ -38,6 +41,8 @@ class MapSystem {
         Section* get_section(int gx, int gy);
         const std::map<std::pair<int, int>, Section*>& get_sections() const { return sections; }
         pair<Section*, int> get_section_at_grid(int grid_x, int grid_y);
+        int get_distance(int section_id, int start_idx, int goal_idx, const vector<int>& wait_nodes);
+        double compute_h_value(int current_section_id, int current_index, int current_goal_id, const vector<pair<SectionState, int>>& goal_sections);
 
     private:
         // 내부 로직: 두 섹션 연결 시도

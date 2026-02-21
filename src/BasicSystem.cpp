@@ -873,9 +873,11 @@ void BasicSystem::conversion_to_sections(MapSystem& mapSys, int current_time)
                 // (목표 지점의 timestep은 도착 예정 시간이 있다면 넣고, 모르면 -1)
                 SectionState goal_state(
                     goal_info.first->id, 
+                    -1,
+                    -1,
+                    -1,
                     goal_info.second, // 목표 index
-                    -1,               
-                    -1                // State 내부 시간(도착시간)은 미정이면 -1
+                    {}
                 );
                 
                 // 2. { State, GenerationTime } 쌍으로 저장
