@@ -23,7 +23,12 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-find_package(Boost CONFIG REQUIRED COMPONENTS filesystem program_options)
+set(Boost_NO_SYSTEM_PATHS TRUE) 
+set(BOOST_ROOT "/opt/homebrew")
+set(BOOST_INCLUDEDIR "/opt/homebrew/include")
+set(BOOST_LIBRARYDIR "/opt/homebrew/lib")
+
+find_package(Boost REQUIRED COMPONENTS filesystem program_options)
 
 add_executable(lifelong ${SOURCES} )
 

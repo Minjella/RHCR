@@ -1,243 +1,294 @@
-C++
 #include "SIPPSection.h"
-#include <limits>
-#include <iostream>
+#include "MapSystem.h"
+#include <climits>
+#include <ctime>
 
-using namespace std;
-
-// -----------------------------------------------------------------------------
-// Helper: Heuristic Calculation
-// -----------------------------------------------------------------------------
-double SIPPSection::compute_h_value(const BasicGraph& G, int curr_sec, int goal_idx, const vector<pair<int, int>>& goals) {
-    if (goal_idx >= goals.size()) return 0.0;
-
-    // 1. 현재 위치에서 현재 목표까지의 거리
-    double h = G.get_heuristic(curr_sec, goals[goal_idx].first);
-
-    // 2. 남은 목표들 간의 거리 누적 (Goal A -> Goal B -> Goal C ...)
-    for (size_t i = goal_idx; i < goals.size() - 1; ++i) {
-        h += G.get_heuristic(goals[i].first, goals[i+1].first);
-    }
-    return h;
+// ------------------------------------------------------------------------------------------------
+// [1] 더미(Dummy) run 함수: 기존 시스템이 ReservationTable로 호출할 경우 에러를 뿜게 만듦
+// ------------------------------------------------------------------------------------------------
+Path SIPPSection::run(const BasicGraph& G, const State& start, const vector<pair<int, int>>& goal_location, ReservationTable& RT)
+{
+    std::cerr << "[Error] SIPPSection은 ReservationTable을 사용하지 않습니다! 새로운 run을 호출하세요." << std::endl;
+    exit(1);
+    return Path();
 }
 
-// -----------------------------------------------------------------------------
-// Helper: Reconstruct Path
-// -----------------------------------------------------------------------------
-Path SIPPSection::reconstruct_path(shared_ptr<SIPPNode> goal_node) {
-    vector<State> path;
-    auto curr = goal_node;
+// ------------------------------------------------------------------------------------------------
+// [2] Path 역추적 (기존 SIPP.cpp와 거의 동일 - SIPPNode 타입만 매칭)
+// ------------------------------------------------------------------------------------------------
+SectionPath SIPPSection::updatePath(const SIPPNode* goal)
+{
+    SectionPath path;
+    path_cost = goal->getFVal();
+    num_of_conf = goal->conflicts;
 
-    while (curr != nullptr) {
-        // 현재 노드의 도착 상태 추가
-        path.emplace_back(curr->section_id, curr->arrival_time, 0);
+    const SIPPNode* curr = goal;
 
-        if (curr->parent) {
-            auto prev = curr->parent;
-            int travel_time = curr->arrival_time - prev->arrival_time;
-            
-            // SIPP는 시간을 점프하므로, 빈 시간(Wait or Move)을 채워줌
-            // 여기서는 단순하게 이전 위치에서 대기하다가 이동했다고 가정하거나
-            // 섹션 이동 시간을 고려하여 역순으로 채움
-            // (구체적인 채우기 로직은 프로젝트의 Move/Wait 정의에 따라 수정 필요)
-            
-            // 예: 도착 직전까지는 '이동 중' 상태 or '대기' 상태
-            for (int t = curr->arrival_time - 1; t > prev->arrival_time; --t) {
-                // 단순화: 이동 시간이 길다면 중간 상태는 prev_loc 유지
-                path.emplace_back(prev->section_id, t, 0); 
+    int child_exit_index = -1;
+    std::vector<int> child_wait_list = {};
+    bool has_child = false;
+
+    while (curr != nullptr)
+    {
+        SectionState state_copy = curr->s_state;
+
+        // if has child, update exit index & wait list.
+        if (has_child){
+            state_copy.exit_index = child_exit_index;
+            state_copy.wait_list = child_wait_list;
+        } else{
+            // goal section -> exit index = goal_index
+            state_copy.exit_index = state_copy.goal_index;
+        }
+
+        path.push_back(state_copy);
+
+        if (curr->parent != nullptr){
+            child_exit_index = curr -> parent_exit_index;
+            child_wait_list = curr -> parent_wait_list;
+            has_child = true;
+        }
+
+        if (curr->parent == nullptr){
+            int t = curr->s_state.timestep - 1;
+            for (; t>=0; t--){
+                path.push_back(SectionState(-1, -1, -1, t));
             }
         }
+
         curr = curr->parent;
     }
 
-    // 역순 정렬 (Start -> Goal)
-    reverse(path.begin(), path.end());
+    std::reverse(path.begin(), path.end());
+
     return path;
 }
 
-// -----------------------------------------------------------------------------
-// Main: RUN
-// -----------------------------------------------------------------------------
-Path SIPPSection::run(const BasicGraph& G, 
-                      const State& start, 
-                      const vector<pair<int, int>>& goals, 
-                      ReservationSection& rs, 
-                      const PriorityGraph* pg,
-                      int agent_id,
-                      int capacity) 
+// ------------------------------------------------------------------------------------------------
+// [3] 진짜 SIPP 알고리즘 본체 (ReservationSection 연동)
+// ------------------------------------------------------------------------------------------------
+SectionPath SIPPSection::run_section(const State& start, 
+                                     const vector<pair<int, int>>& goal_location,
+                                     ReservationSection& rs, 
+                                     int agent_id, int capacity, void* map_system_ptr)
 {
-    // 초기화
-    num_expanded = 0;
-    num_generated = 0;
-    
-    // Open List
-    priority_queue<SIPPNode, vector<SIPPNode>, greater<SIPPNode>> open_list;
-    
-    // Closed List: <SectionID, GoalIdx> -> Min Arrival Time으로 관리하거나
-    // SIPP 특성상 <SectionID, IntervalID, GoalIdx> 방문 여부 체크
-    // 여기서는 간단히 visited set 사용 (Key: Section * 1000 + GoalIdx 등으로 해싱 추천)
-    // 정확성을 위해 map으로 g_score 관리
-    struct NodeKey {
-        int s_id, i_id, g_idx;
-        bool operator==(const NodeKey& o) const { 
-            return s_id == o.s_id && i_id == o.i_id && g_idx == o.g_idx; 
-        }
-    };
-    struct KeyHash {
-        size_t operator()(const NodeKey& k) const {
-            return hash<int>()(k.s_id) ^ hash<int>()(k.i_id) ^ hash<int>()(k.g_idx);
-        }
-    };
-    unordered_map<NodeKey, double, KeyHash> closed_list;
+    num_expanded = 0; num_generated = 0; runtime = 0;
+    clock_t start_clock = std::clock();
 
-    // 1. Start Node 생성
-    // 시작 섹션의 Safe Interval들 가져오기
-    auto start_intervals = rs.get_safe_intervals(start.location, capacity);
+    // MapSystem 포인터 캐스팅 (클래스명에 맞춰 수정)
+    MapSystem* MapSys = static_cast<MapSystem*>(map_system_ptr);
+
+    // ✨ 1. 시작 그리드(location)를 통해 시작 섹션 ID 알아내기
+    int start_section_id = MapSys->get_section_id(start.location);
+    
+    // 시작 상태 빚어내기 (start_index는 현재 위치 그대로 사용)
+    SectionState start_state(start_section_id, start.location, -1, start.timestep);
+
+    // 초기 휴리스틱 계산
+    double h_val = compute_h_value(G, start.location, 0, goal_location);
+
+    // 2. 출발지의 Safe Interval 찾기
+    SecInterval start_interval = std::make_tuple(0, 0, 0);
     bool start_found = false;
-
-    for (int i = 0; i < start_intervals.size(); ++i) {
-        auto [i_start, i_end, i_count] = *next(start_intervals.begin(), i);
-        
-        // 시작 시간이 구간 안에 포함되는지 확인
-        if (start.timestep >= i_start && start.timestep < i_end) {
-            double h = compute_h_value(G, start.location, 0, goals);
-            open_list.emplace(start.location, i, start.timestep, 0, 0.0, 0.0 + h, nullptr);
+    for (auto const& interval : rs.get_safe_intervals(start_section_id, capacity)) {
+        if (std::get<0>(interval) <= start.timestep && std::get<1>(interval) > start.timestep) {
+            start_interval = interval;
             start_found = true;
-            num_generated++;
-            break; // 시작 시간은 하나의 구간에만 속함
+            break;
         }
     }
 
-    if (!start_found) {
-        // 시작부터 막힌 경우 (Capacity Full or Collision)
-        return Path(); 
-    }
+    if (!start_found) return SectionPath();
 
-    // 2. Search Loop
-    while (!open_list.empty()) {
-        // Pop Best Node
-        SIPPNode current = open_list.top();
-        open_list.pop();
+    // 3. 시작 노드 생성
+    auto start_node = new SIPPNode(start_state, 0, h_val, start_interval, nullptr, 0, -1);
+    num_generated++;
+    start_node->open_handle = open_list.push(start_node);
+    start_node->in_openlist = true;
+    allNodes_table.insert(start_node);
+    min_f_val = start_node->getFVal();
+    focal_bound = min_f_val * suboptimal_bound;
+    start_node->focal_handle = focal_list.push(start_node);
+
+    // 4. 메인 루프
+    while (!focal_list.empty())
+    {
+        SIPPNode* curr = focal_list.top(); 
+        focal_list.pop();
+        open_list.erase(curr->open_handle);
+        curr->in_openlist = false;
         num_expanded++;
 
-        // Check Closed List (더 나쁜 경로로 왔으면 스킵)
-        NodeKey key = {current.section_id, current.interval_id, current.goal_idx};
-        if (closed_list.find(key) != closed_list.end() && closed_list[key] <= current.g_score) {
-            continue;
-        }
-        closed_list[key] = current.g_score;
+        // ✨ 5. 정확한 Goal 도달 체크 로직 (매우 중요)
+        int current_goal_grid = goal_location[curr->goal_id].first;
+        int current_goal_time = goal_location[curr->goal_id].second;
+        int goal_section_id = MapSys->get_section_id(current_goal_grid);
 
-        // -------------------------------------------------------
-        // Goal Logic (Multi-Goal Sequence)
-        // -------------------------------------------------------
-        int curr_goal_sec = goals[current.goal_idx].first;
-        int curr_goal_min_time = goals[current.goal_idx].second;
+        // 만약 현재 노드가 '목표 지점이 있는 섹션'에 진입했다면?
+        if (curr->s_state.section_id == goal_section_id) 
+        {
+            // 진입점(curr->s_state.start_index)에서 실제 목표 그리드까지의 거리 계산
+            double dist_to_goal = MapSys->get_distance(curr->s_state.start_index, current_goal_grid);
+            int arrive_time_at_goal = curr->s_state.timestep + dist_to_goal;
 
-        // 현재 목표 섹션에 도착했고, 시간 조건도 만족했다면?
-        if (current.section_id == curr_goal_sec && current.arrival_time >= curr_goal_min_time) {
-            
-            // 마지막 목표였다면 종료
-            if (current.goal_idx == goals.size() - 1) {
-                return reconstruct_path(make_shared<SIPPNode>(current));
-            }
-
-            // 다음 목표로 전환 (위치는 그대로, Goal Index만 증가)
-            int next_goal_idx = current.goal_idx + 1;
-            double new_h = compute_h_value(G, current.section_id, next_goal_idx, goals);
-            
-            // 현재 상태에서 Goal Index만 바꿔서 다시 Push
-            // (같은 섹션, 같은 구간, 같은 시간인데 목표만 바뀜)
-            open_list.emplace(
-                current.section_id, 
-                current.interval_id, 
-                current.arrival_time, 
-                next_goal_idx, 
-                current.g_score, 
-                current.g_score + new_h, 
-                make_shared<SIPPNode>(current) // 부모 연결
-            );
-            continue; 
-        }
-
-        // -------------------------------------------------------
-        // Expand Neighbors
-        // -------------------------------------------------------
-        // 현재 구간 정보 가져오기 (메모리 최적화를 위해 인덱스로 접근하거나 다시 조회)
-        // 여기서는 편의상 다시 조회 (캐싱되어 있어 빠름)
-        auto intervals = rs.get_safe_intervals(current.section_id, capacity);
-        auto [curr_start, curr_end, curr_count] = *next(intervals.begin(), current.interval_id);
-
-        // 1. 같은 섹션의 다음 안전 구간으로 대기 (Wait)
-        // 현재 구간 끝난 직후 다음 구간이 있다면 연결
-        if (current.interval_id + 1 < intervals.size()) {
-             auto [next_start, next_end, next_count] = *next(intervals.begin(), current.interval_id + 1);
-             
-             // 다음 구간 시작 시간이 연결되어 있는지 확인 (혹은 갭이 있어도 대기 가능하면 이동)
-             // 단순히 시간만 흐르는 것이므로 위치는 동일
-             int wait_arrival = next_start;
-             double wait_cost = wait_arrival - current.arrival_time; // 대기 시간 비용
-             
-             open_list.emplace(
-                 current.section_id,
-                 current.interval_id + 1,
-                 wait_arrival,
-                 current.goal_idx,
-                 current.g_score + wait_cost,
-                 current.g_score + wait_cost + compute_h_value(G, current.section_id, current.goal_idx, goals),
-                 make_shared<SIPPNode>(current)
-             );
-        }
-
-        // 2. 이웃 섹션으로 이동 (Move)
-        for (const auto& edge : G.get_neighbors(current.section_id)) {
-            int next_sec = edge.to;
-            int travel_time = edge.cost; // 섹션 간 이동 시간
-            int min_arrival = current.arrival_time + travel_time;
-
-            // 다음 섹션의 Safe Intervals 조회
-            auto next_intervals = rs.get_safe_intervals(next_sec, capacity);
-
-            for (int i = 0; i < next_intervals.size(); ++i) {
-                auto [ni_start, ni_end, ni_count] = *next(next_intervals.begin(), i);
-
-                // [핵심] 도착 가능 시간 계산
-                // 가장 빨리 도착하는 시간 vs 구간이 열리는 시간
-                int arrival = max(min_arrival, ni_start);
-
-                // 유효성 검사:
-                // 1. 구간이 닫히기 전에 도착해야 함
-                // 2. 현재 구간(curr_end) 내에 출발할 수 있어야 함 (Departure constraint)
-                //    출발 시간 = arrival - travel_time
-                if (arrival < ni_end && (arrival - travel_time) < curr_end) {
-
-                    // 3. [PBS Check] 정밀 충돌 검사 (is_safe)
-                    // SIPP는 '용량'만 보장하므로, 특정 Agent와의 충돌은 여기서 체크
-                    // 이동하는 'Edge'와 도착하는 'Node'가 안전한지 확인
-                    // (사용자님의 is_safe 구현에 따라 인자 조절)
-                    if (rs.is_safe(arrival, next_sec, current.section_id, -1, agent_id, capacity, pg)) {
-                        
-                        double move_cost = travel_time; 
-                        double wait_cost = (arrival - min_arrival); // 추가 대기 시간
-                        // 혼잡도 패널티 추가 가능 (ni_count * weight)
-
-                        double new_g = current.g_score + move_cost + wait_cost;
-                        double new_h = compute_h_value(G, next_sec, current.goal_idx, goals);
-
-                        open_list.emplace(
-                            next_sec,
-                            i,
-                            arrival,
-                            current.goal_idx,
-                            new_g,
-                            new_g + new_h,
-                            make_shared<SIPPNode>(current)
-                        );
-                    }
+            // 목표 릴리즈 시간 이후에 도달할 수 있는지 확인
+            if (arrive_time_at_goal >= current_goal_time) 
+            {
+                curr->goal_id++;
+                // 모든 목적지를 다 찍었다면 종료!
+                if (curr->goal_id == (int)goal_location.size())
+                {
+                    SectionPath path = updatePath(curr);
+                    releaseClosedListNodes();
+                    open_list.clear(); focal_list.clear();
+                    runtime = (std::clock() - start_clock) * 1.0 / CLOCKS_PER_SEC;
+                    return path;
                 }
             }
         }
+
+        // 6. 이웃 섹션 확장 (MapSystem 연동)
+        auto neighbors = MapSys->get_neighbors(curr->s_state.section_id);
+
+        for (const auto& neighbor : neighbors) 
+        {
+            int next_section_id = neighbor.section_id;
+            int curr_exit_index = neighbor.curr_exit_index;
+            int next_start_index = neighbor.next_start_index;
+            
+            double total_travel_cost = neighbor.internal_cost + neighbor.edge_cost;
+            int arrival_time = curr->s_state.timestep + total_travel_cost;
+
+            // 목적지까지의 휴리스틱 (현재 목적지의 그리드 좌표 기준)
+            double next_h_val = compute_h_value(G, next_start_index, curr->goal_id, goal_location);
+
+            // ReservationSection 체크
+            auto safe_intervals = rs.get_safe_intervals(next_section_id, capacity);
+            for (const auto& interval : safe_intervals)
+            {
+                if (std::get<1>(interval) <= arrival_time) continue;
+
+                int section_congestion = std::get<2>(interval);
+
+                generate_node(interval, curr, next_section_id, next_start_index, curr_exit_index, 
+                              total_travel_cost, arrival_time, next_h_val, section_congestion);
+            }
+        }
+
+        // ... (FOCAL / OPEN 리스트 업데이트 - 이전과 동일) ...
     }
 
-    // 경로 없음
-    return Path();
+    releaseClosedListNodes();
+    open_list.clear(); focal_list.clear();
+    return SectionPath();
+}
+
+// ------------------------------------------------------------------------------------------------
+// [4] 노드 생성 (기존 로직과 동일, Interval -> SecInterval 매핑)
+// ------------------------------------------------------------------------------------------------
+void SIPPSection::generate_node(const SecInterval& interval, SIPPNode* curr, 
+                                int next_section_id, int next_start_index, int curr_exit_index,
+                                const std::vector<int>& wait_list,
+                                double travel_cost, int arrival_time, double h_val, int section_congestion)
+{
+    // 1. 실제 도착(진입) 시간
+    int timestep = std::max(std::get<0>(interval), arrival_time);
+    
+    // 2. 대기 시간 계산 (이전 섹션에서 얼마나 머무르다 넘어와야 하는가)
+    int extra_wait_time = timestep - arrival_time;
+    std::vector<int> final_wait_list = wait_list;
+    if (extra_wait_time > 0){
+        for(int i=0; i<extra_wait_time; i++){
+            final_wait_list.push_back(curr->parent_exit_index);
+        }
+    }
+    int wait_time = sizeof(final_wait_list);
+
+    // 3. g_val 계산 (이동 시간 + 대기 시간) -> 시간적 비용만 철저히 관리
+    double g_val = curr->g_val + wait_time; 
+
+    // 4. 혼잡도 누적 계산 (FOCAL 정렬용 Tie-breaker)
+    int next_conflicts = curr->conflicts + section_congestion;
+
+    // 5. SectionState 생성 (방금 도착했으므로 내 출구 exit_index는 아직 모름 -> -1)
+    SectionState next_state(next_section_id, next_start_index, -1, timestep);
+
+    // 6. 노드 생성 (부모의 출구 curr_exit_index를 내 노드에 기록해둠)
+    auto next = new SIPPNode(next_state, g_val, h_val, interval, curr, next_conflicts, curr_exit_index, final_wait_list);
+
+    auto it = allNodes_table.find(next);
+    if (it == allNodes_table.end())
+    {
+        next->open_handle = open_list.push(next);
+        next->in_openlist = true;
+        num_generated++;
+        if (next->getFVal() <= focal_bound)
+            next->focal_handle = focal_list.push(next);
+        allNodes_table.insert(next);
+        return;
+    }
+
+    // 기존 노드 업데이트 로직 (g_val + h_val 비교 후 conflicts 비교)
+    SIPPNode* existing_next = *it;
+    double existing_f_val = existing_next->getFVal();
+    double new_f_val = g_val + h_val;
+
+    if (existing_next->in_openlist)
+    {  
+        if (existing_f_val > new_f_val || (existing_f_val == new_f_val && existing_next->conflicts > next_conflicts))
+        {
+            bool add_to_focal = false;  
+            bool update_in_focal = false;  
+            bool update_open = false;
+            
+            if (new_f_val <= focal_bound) {  
+                if (existing_f_val > focal_bound) add_to_focal = true;  
+                else update_in_focal = true;  
+            }
+            if (existing_f_val > new_f_val) update_open = true;
+            
+            existing_next->s_state = next->s_state;
+            existing_next->g_val = g_val;
+            existing_next->h_val = h_val;
+            existing_next->parent = curr;
+            existing_next->depth = next->depth;
+            existing_next->conflicts = next_conflicts;
+            existing_next->parent_exit_index = curr_exit_index; // 출구 정보도 업데이트
+
+            if (update_open) open_list.increase(existing_next->open_handle);  
+            if (add_to_focal) existing_next->focal_handle = focal_list.push(existing_next);
+            if (update_in_focal) focal_list.update(existing_next->focal_handle);  
+        }
+    }
+    else
+    {  
+        // Reopen 로직
+        if (existing_f_val > new_f_val || (existing_f_val == new_f_val && existing_next->conflicts > next_conflicts))
+        {
+            existing_next->s_state = next->s_state;
+            existing_next->g_val = g_val;
+            existing_next->h_val = h_val;
+            existing_next->parent = curr;
+            existing_next->depth = next->depth;
+            existing_next->conflicts = next_conflicts;
+            existing_next->parent_exit_index = curr_exit_index;
+            
+            existing_next->open_handle = open_list.push(existing_next);
+            existing_next->in_openlist = true;
+            if (existing_f_val <= focal_bound)
+                existing_next->focal_handle = focal_list.push(existing_next);
+        }
+    }  
+
+    delete(next); 
+}
+
+// ------------------------------------------------------------------------------------------------
+// [5] 메모리 정리
+// ------------------------------------------------------------------------------------------------
+inline void SIPPSection::releaseClosedListNodes()
+{
+    for (auto it = allNodes_table.begin(); it != allNodes_table.end(); it++)
+        delete (*it);
+    allNodes_table.clear();
 }

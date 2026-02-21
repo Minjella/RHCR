@@ -2,20 +2,36 @@
 #include "StateTimeAStar.h"
 #include "SingleAgentSolver.h"
 #include "ReservationSection.h"
+#include "SectionState.h"
 #include "PriorityGraph.h" // PBS 연동용
 #include <boost/heap/fibonacci_heap.hpp>
 #include <boost/functional/hash.hpp> // boost::hash_combine 사용
 #include <unordered_set>
+#include <vector>
+#include <iostream>
 
 using boost::heap::fibonacci_heap;
 using boost::heap::compare;
+
+// MapSystem에서 이웃 정보를 받아오기 위한 임시 구조체
+struct NeighborInfo{
+    int section_id;
+    int curr_exit_index;
+    int next_start_index;
+    vector<int> wait_list;
+    double internal_cost; // curr_start -> curr_exit 비용
+    double edge_cost; // curr_exit -> next_start 비용
+};
 
 // SIPPNode가 StateTimeAStarNode를 상속받도록 하여 호환성 유지
 class SIPPNode : public StateTimeAStarNode
 {
 public:
+    SectionState s_state;
     SIPPNode* parent;
     SecInterval interval; // <start, end, occupancy>
+    int parent_exit_index; // parent section에서 사용한 출구
+    std::vector<int> parent_wait_list;
 
     // OPEN 리스트용 비교 연산 (f-val 최소, 같으면 g-val 최대)
     struct compare_node
@@ -47,12 +63,12 @@ public:
     fibonacci_heap<SIPPNode*, compare<SIPPNode::compare_node>>::handle_type open_handle;
     fibonacci_heap<SIPPNode*, compare<SIPPNode::secondary_compare_node>>::handle_type focal_handle;
 
-    SIPPNode() : StateTimeAStarNode(), parent(nullptr) {}
+    SIPPNode() : StateTimeAStarNode(), parent(nullptr), parent_exit_index(-1) {}
 
-    SIPPNode(const State& state, double g_val, double h_val, const SecInterval& interval,
-             SIPPNode* parent, int conflicts)
-        : StateTimeAStarNode(state, g_val, h_val, nullptr, conflicts), 
-          parent(parent), interval(interval)
+    SIPPNode(const SectionState& state, double g_val, double h_val, const SecInterval& interval,
+             SIPPNode* parent, int conflicts, int parent_exit_index = -1, const std::vector<int>& parent_wait_list = {})
+        : StateTimeAStarNode(State(-1, -1), g_val, h_val, nullptr, conflicts),  // 부모의 기존 state 무효화
+          s_state(state), parent(parent), interval(interval), parent_exit_index(parent_exit_index), parent_wait_list(parent_wait_list)
     {
         if (parent != nullptr) {
             depth = parent->depth + 1;
@@ -69,7 +85,7 @@ public:
         bool operator()(const SIPPNode* n1, const SIPPNode* n2) const
         {
             return (n1 == n2) ||
-                   (n1 && n2 && n1->state.location == n2->state.location &&
+                   (n1 && n2 && n1->s_state == n2->s_state &&
                     n1->interval == n2->interval && // 같은 구간인지가 중요!
                     n1->goal_id == n2->goal_id);
         }
@@ -79,7 +95,7 @@ public:
     struct Hasher {
         size_t operator()(const SIPPNode* n) const {
             size_t seed = 0;
-            boost::hash_combine(seed, n->state.location);
+            boost::hash_combine(seed, SectionState::Hasher()(n->s_state));
             boost::hash_combine(seed, std::get<0>(n->interval)); // interval start
             boost::hash_combine(seed, std::get<2>(n->interval)); // current_occupancy
             boost::hash_combine(seed, n->goal_id);
@@ -102,9 +118,10 @@ public:
     }
 
     // 기존 ReservationTable 대신 우리가 만든 ReservationSection을 받음
-    Path run(const BasicGraph& G, const State& start,
-             const vector<pair<int, int>>& goal_location,
-             ReservationSection& rs, const PriorityGraphj* pg, int agent_id, int capacity);
+    SectionPath SIPPSection::run_section(const State& start, 
+                                     const vector<pair<int, int>>& goal_location,
+                                     ReservationSection& rs, 
+                                     int agent_id, int capacity, void* map_system_ptr);
 
     string getName() const { return "SIPPSection"; }
     SIPPSection() : SingleAgentSolver() {}
@@ -116,10 +133,10 @@ private:
     // Closed List: RHCR 스타일로 unordered_set 사용
     unordered_set<SIPPNode*, SIPPNode::Hasher, SIPPNode::EqNode> allNodes_table;
 
-    void generate_node(const SecInterval& interval, SIPPNode* curr, const BasicGraph& G,
-                       int next_section_id, int arrival_time, double h_val, int conflicts);
+    void generate_node(const SecInterval& interval, SIPPNode* curr,
+                       int next_section_id, int next_start_index, int curr_exit_index, double travel_cost, int arrival_time, double h_val, int section_congestion, vector<int> wait_list;);
     
-    Path updatePath(const BasicGraph& G, const SIPPNode* goal);
+    SectionPath updatePath(const SIPPNode* goal);
 
     inline void releaseClosedListNodes();
 };
