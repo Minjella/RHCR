@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+#include <unordered_set>
 #include <cstdint>
 #include <vector>
 #include <algorithm>
@@ -7,10 +8,13 @@
 #include <list>
 #include <tuple>
 #include <map>
-#include "PriorityGraph.h"
+
+// SectionState, SectionPath
+#include <SectionState.h>
+#include <MapSystem.h>
 
 // // <start_time, end_time, current_capacity>
-// typedef std::tuple<int, int, int> SecInterval;
+typedef std::tuple<int, int, int> SecInterval;
 
 static constexpr int MAX_TIME_LIMIT = (1 << 14) -1;
 
@@ -37,7 +41,7 @@ class ReservationSection {
 
         // 키 생성 함수 (32비트 반환)
         inline uint32_t make_cell_key(int time, int section_id, int cell_idx) const;
-        inline uint32_t make_section_key(int time, int section_id) const;
+        //inline uint32_t make_section_key(int time, int section_id) const;
 
         // ---------------------------------------------------------
         // 2. Data Structures
@@ -56,6 +60,9 @@ class ReservationSection {
         // CBS에서 제약을 걸거나, 맵의 문이 닫히는 경우 사용
         std::unordered_map<uint32_t, std::vector<int>> section_constraints;
 
+        // SIT cache update
+        void update_sit(int section_id);
+
 
     public:
         ReservationSection(){
@@ -63,9 +70,21 @@ class ReservationSection {
             // section_count_table.reserve(5000);
         }
 
-        void add_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
+        void clear(){
+            cell_table.clear();
+            section_timeline.clear();
+            sit_cache.clear();
+            section_constraints.clear();
+        }
 
-        void remove_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
+        // PBS build function
+        void build(const std::vector<SectionPath*>& paths, const std::unordered_set<int>& high_priority_agents, MapSystem* MapSys);
+        
+
+
+        //void add_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
+
+        //void remove_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
 
         // 충돌 체크 (PBS 우선순위 로직 포함)
         // True: 지나갈 수 있음, False: 막힘
@@ -74,13 +93,14 @@ class ReservationSection {
         // 섹션 혼잡도 체크 (Capacity Constraint)
         //bool is_section_capacity_okay(int time, int section_id, int capacity) const;
 
-        void add_section_constraint(int time, int section_id, int agent_id);
+        //void add_section_constraint(int time, int section_id, int agent_id);
 
         // 제약 해제
-        void remove_section_constraint(int time, int section_id, int agent_id);
+        //void remove_section_constraint(int time, int section_id, int agent_id);
 
-        bool is_safe(int time, int section_id, int pre_section_id, int cell_idx, int my_id, int capacity, const PriorityGraph* pg) const ;
+        //bool is_safe(int time, int section_id, int pre_section_id, int cell_idx, int my_id, int capacity, const PriorityGraph* pg) const ;
 
+        // 혼잡도 카운트 조회 (필요 시)
         int get_congestion_count(int time, int section_id) const;
 
         // void update_sit(int section_id, int capacity);
@@ -88,5 +108,7 @@ class ReservationSection {
         // void merge_intervals(std::list<SecInterval>& intervals) const;
 
         std::list<SecInterval> get_safe_intervals(int section_id, int capacity);
+
+        bool is_cell_safe(int time, int section_id, int cell_idx) const;
         
 };
