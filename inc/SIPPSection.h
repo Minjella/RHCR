@@ -122,6 +122,8 @@ public:
     string getName() const override { return "SIPPSection"; }
     SIPPSection() : SingleAgentSolver() {}
 
+
+
 private:
     fibonacci_heap<SIPPNode*, compare<SIPPNode::compare_node>> open_list;
     fibonacci_heap<SIPPNode*, compare<SIPPNode::secondary_compare_node>> focal_list;
@@ -137,4 +139,7 @@ private:
     SectionPath updatePath(const SIPPNode* goal);
 
     inline void releaseClosedListNodes();
+
+    std::vector<int> find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index);
 };
+
