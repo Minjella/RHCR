@@ -24,12 +24,12 @@ struct NeighborInfo{
     double edge_cost; // curr_exit -> next_start 비용
 };
 
-// SIPPNode가 StateTimeAStarNode를 상속받도록 하여 호환성 유지
-class SIPPNode : public StateTimeAStarNode
+// SIPPSectionNode가 StateTimeAStarNode를 상속받도록 하여 호환성 유지
+class SIPPSectionNode : public StateTimeAStarNode
 {
 public:
     SectionState s_state;
-    SIPPNode* parent;
+    SIPPSectionNode* parent;
     SecInterval interval; // <start, end, occupancy>
     int parent_exit_index; // parent section에서 사용한 출구
     std::vector<int> parent_wait_list;
@@ -37,7 +37,7 @@ public:
     // OPEN 리스트용 비교 연산 (f-val 최소, 같으면 g-val 최대)
     struct compare_node
     {
-        bool operator()(const SIPPNode* n1, const SIPPNode* n2) const
+        bool operator()(const SIPPSectionNode* n1, const SIPPSectionNode* n2) const
         {
             if (n1->g_val + n1->h_val == n2->g_val + n2->h_val)
                 return n1->g_val <= n2->g_val; 
@@ -48,7 +48,7 @@ public:
     // FOCAL 리스트용 비교 연산 (충돌 최소화 우선)
     struct secondary_compare_node
     {
-        bool operator()(const SIPPNode* n1, const SIPPNode* n2) const
+        bool operator()(const SIPPSectionNode* n1, const SIPPSectionNode* n2) const
         {
             if (n1->conflicts == n2->conflicts)
             {
@@ -61,13 +61,13 @@ public:
     };
 
     // Fibonacci Heap 핸들 정의
-    fibonacci_heap<SIPPNode*, compare<SIPPNode::compare_node>>::handle_type open_handle;
-    fibonacci_heap<SIPPNode*, compare<SIPPNode::secondary_compare_node>>::handle_type focal_handle;
+    fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::compare_node>>::handle_type open_handle;
+    fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::secondary_compare_node>>::handle_type focal_handle;
 
-    SIPPNode() : StateTimeAStarNode(), parent(nullptr), parent_exit_index(-1) {}
+    SIPPSectionNode() : StateTimeAStarNode(), parent(nullptr), parent_exit_index(-1) {}
 
-    SIPPNode(const SectionState& state, double g_val, double h_val, const SecInterval& interval,
-             SIPPNode* parent, int conflicts, int parent_exit_index = -1, const std::vector<int>& parent_wait_list = {})
+    SIPPSectionNode(const SectionState& state, double g_val, double h_val, const SecInterval& interval,
+             SIPPSectionNode* parent, int conflicts, int parent_exit_index = -1, const std::vector<int>& parent_wait_list = {})
         : StateTimeAStarNode(State(-1, -1), g_val, h_val, nullptr, conflicts),  // 부모의 기존 state 무효화
           s_state(state), parent(parent), interval(interval), parent_exit_index(parent_exit_index), parent_wait_list(parent_wait_list)
     {
@@ -83,22 +83,28 @@ public:
     // 노드 중복 체크를 위한 EqNode
     struct EqNode
     {
-        bool operator()(const SIPPNode* n1, const SIPPNode* n2) const
+        bool operator()(const SIPPSectionNode* n1, const SIPPSectionNode* n2) const
         {
-            return (n1 == n2) ||
-                   (n1 && n2 && n1->s_state == n2->s_state &&
-                    n1->interval == n2->interval && // 같은 구간인지가 중요!
-                    n1->goal_id == n2->goal_id);
+            if (n1 == n2) return true;
+            if (!n1 || !n2) return false;
+
+            return (n1->s_state.section_id == n2->s_state.section_id) &&
+                   (n1->s_state.start_index == n2->s_state.start_index) &&
+                   (n1->interval == n2->interval) && 
+                   (n1->goal_id == n2->goal_id);
         }
     };
 
     // 해시 함수 (Closed List용)
     struct Hasher {
-        size_t operator()(const SIPPNode* n) const {
+        size_t operator()(const SIPPSectionNode* n) const {
             size_t seed = 0;
-            boost::hash_combine(seed, SectionState::Hasher()(n->s_state));
+            // ★ 핵심: SectionState::Hasher 대신 위치 정보만 직접 해싱!
+            boost::hash_combine(seed, n->s_state.section_id);
+            boost::hash_combine(seed, n->s_state.start_index);
+            
             boost::hash_combine(seed, std::get<0>(n->interval)); // interval start
-            boost::hash_combine(seed, std::get<2>(n->interval)); // current_occupancy
+            // (interval start만으로도 같은 구역 내에서는 고유하게 구별되므로 충분합니다)
             boost::hash_combine(seed, n->goal_id);
             return seed;
         }
@@ -125,18 +131,18 @@ public:
 
 
 private:
-    fibonacci_heap<SIPPNode*, compare<SIPPNode::compare_node>> open_list;
-    fibonacci_heap<SIPPNode*, compare<SIPPNode::secondary_compare_node>> focal_list;
+    fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::compare_node>> open_list;
+    fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::secondary_compare_node>> focal_list;
     
     // Closed List: RHCR 스타일로 unordered_set 사용
-    unordered_set<SIPPNode*, SIPPNode::Hasher, SIPPNode::EqNode> allNodes_table;
+    unordered_set<SIPPSectionNode*, SIPPSectionNode::Hasher, SIPPSectionNode::EqNode> allNodes_table;
 
-    void generate_node(const SecInterval& interval, SIPPNode* curr, 
+    void generate_node(const SecInterval& interval, SIPPSectionNode* curr, 
                                 int next_section_id, int next_start_index, int curr_exit_index,
-                                const std::vector<int>& wait_list,
+                                const std::vector<int>& wait_list, ReservationSection& rs,
                                 double travel_cost, int arrival_time, double h_val, int section_congestion);
 
-    SectionPath updatePath(const SIPPNode* goal);
+    SectionPath updatePath(const SIPPSectionNode* goal);
 
     inline void releaseClosedListNodes();
 

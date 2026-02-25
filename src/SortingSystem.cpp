@@ -1,4 +1,6 @@
 #include "SortingSystem.h"
+#include "SIPPSection.h" // test를 위해 추가
+#include "SingleAgentSolver.h" // test를 위해 추가
 #include <stdlib.h>
 #include "PBS.h"
 #include <boost/tokenizer.hpp>
@@ -33,6 +35,7 @@ void SortingSystem::initialize_start_locations()
 				orientation = rand() % 4;
 			}
 			starts[k] = State(loc, 0, orientation);
+			std::cout << "agent " << k << " start location: (" <<  loc/G.cols << ", " << loc%G.cols << "}" << std::endl;
 			paths[k].emplace_back(starts[k]);
 			used[loc] = true;
 			finished_tasks[k].emplace_back(loc, 0);
@@ -62,7 +65,7 @@ void SortingSystem::initialize_goal_locations()
 		{
 			goal = assign_eject_station();
 		}
-		goal_locations[k].emplace_back(goal, 0);
+		goal_locations[k].emplace_back(goal, 0); 
     }
 }
 
@@ -147,11 +150,13 @@ void SortingSystem::simulate(int simulation_time)
     this->simulation_time = simulation_time;
     initialize();
 	
+	SIPPSection* section_path_planner;
 
 	///////////////// 추가 ////////////////////
 	MapSystem mapSys;
 	mapSys.build_procedural_map(G.get_cols(), G.get_rows());
 	conversion_to_sections(mapSys, 0);
+	section_path_planner = new SIPPSection();
 	//this->print_conversion_debug(G.get_cols());
 	///////////////////////////////////////////
 	
@@ -163,6 +168,63 @@ void SortingSystem::simulate(int simulation_time)
 
 		update_start_locations();
 		update_goal_locations();
+		conversion_to_sections(mapSys, timestep);
+		
+		for (int k=0;k<num_of_drives;k++){
+			std::cout << "agent " << k << " goal locations: ";
+
+			// goal_locations[k]에 있는 모든 pair를 순회
+			for (const auto& goal : goal_locations[k]) 
+			{
+				int loc = goal.first; // pair의 첫 번째 값 (1D 위치 인덱스)
+				int x = loc / G.cols;
+				int y = loc % G.cols;
+				
+				// (x, y) 형태로 출력
+				std::cout << "(" << x << ", " << y << ") "; 
+			}
+			std::cout << std::endl;
+		}
+
+		std::cout << "Convert to Section" << std::endl;
+		for(int k=0;k<num_of_drives;k++){
+			std::cout << "agent " << k << std::endl;
+
+			std::cout << "start section id: [" << mapSys.sections_by_id[start_sections[k].section_id]->grid_x << ", " << mapSys.sections_by_id[start_sections[k].section_id]->grid_y << "] <- (" <<  mapSys.sections_by_id[start_sections[k].section_id]->anchor_x << ", " << mapSys.sections_by_id[start_sections[k].section_id]->anchor_y << ")"<<", index: " << start_sections[k].start_index << std::endl;
+			std::cout << " goal sections: { " << std::endl;
+
+			// goal_locations[k]에 있는 모든 pair를 순회
+			for (const auto& goal : goal_sections[k]) 
+			{
+				std::cout << "section id: [" << mapSys.sections_by_id[goal.first.section_id]->grid_x << ", " << mapSys.sections_by_id[goal.first.section_id]->grid_y << "] <- (" <<  mapSys.sections_by_id[goal.first.section_id]->anchor_x << ", " << mapSys.sections_by_id[goal.first.section_id]->anchor_y << ")"<<", index: " << goal.first.goal_index << std::endl;
+			}
+			std::cout << "}"<< std::endl;
+
+		}
+
+		ReservationSection rs;
+		rs = ReservationSection();
+		rs.clear();
+
+		SectionPath SP;
+		// single agent pathfinding test
+		for(int k=0;k<num_of_drives;k++){
+			SP = section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
+			for (SectionState s_state: SP){
+				std::cout << mapSys.sections_by_id[s_state.section_id]->grid_x << ", " << mapSys.sections_by_id[s_state.section_id]->grid_y << ", " << s_state.timestep<< std::endl;
+			}
+		}
+
+
+
+		
+
+
+
+
+
+		
+
 		solve();
 
 		// move drives
@@ -193,6 +255,11 @@ void SortingSystem::simulate(int simulation_time)
 
 	update_start_locations();
 	std::cout << std::endl << "Done!" << std::endl;
+
+
+
+
+
 	save_results();
 
 	
@@ -246,3 +313,4 @@ void SortingSystem::initialize()
 		}
 	}
 }
+

@@ -136,81 +136,145 @@ void SectionTemplate::setup_connectivity() {
         width = 3;
         height = 2;
 
-        adj[0].push_back(1); 
-        adj[1].push_back(2); 
-        adj[2].push_back(5);
-        adj[5].push_back(4); 
-        adj[4].push_back(3); 
-        adj[3].push_back(0);
+        adj[3].push_back(4); 
+        adj[4].push_back(5); 
+        adj[5].push_back(8);
+        adj[8].push_back(7); 
+        adj[7].push_back(6); 
+        adj[6].push_back(3);
 
-        entries = {0, 2};
-        exits = {0, 2};
+        entries = {3, 5};
+        exits = {3, 5};
 
-        entry_cells_by_dir[DIR_WEST] = 0;
-        entry_cells_by_dir[DIR_NORTH] = 2;
+        entry_cells_by_dir[DIR_WEST] = 3;
+        entry_cells_by_dir[DIR_NORTH] = 5;
 
-        exit_cells_by_dir[DIR_NORTH] = 0;
-        exit_cells_by_dir[DIR_EAST] = 2;
+        exit_cells_by_dir[DIR_NORTH] = 3;
+        exit_cells_by_dir[DIR_EAST] = 5;
+
+        // adj[0].push_back(1); 
+        // adj[1].push_back(2); 
+        // adj[2].push_back(5);
+        // adj[5].push_back(4); 
+        // adj[4].push_back(3); 
+        // adj[3].push_back(0);
+
+        // entries = {0, 2};
+        // exits = {0, 2};
+
+        // entry_cells_by_dir[DIR_WEST] = 0;
+        // entry_cells_by_dir[DIR_NORTH] = 2;
+
+        // exit_cells_by_dir[DIR_NORTH] = 0;
+        // exit_cells_by_dir[DIR_EAST] = 2;
     }
     else if (type == SectionType::Induct_N_BOTTOM) {
         width = 3;
         height = 2;
 
-        adj[0].push_back(3); 
+        adj[3].push_back(6); 
+        adj[6].push_back(7); 
+        adj[7].push_back(8);
+        adj[8].push_back(5); 
         adj[3].push_back(4); 
         adj[4].push_back(5);
-        adj[5].push_back(2); 
-        adj[0].push_back(1); 
-        adj[1].push_back(2);
 
-        entries = {0};
-        exits = {2};
+        entries = {3};
+        exits = {5};
 
-        entry_cells_by_dir[DIR_WEST] = 0;
-        entry_cells_by_dir[DIR_NORTH] = 0;
+        entry_cells_by_dir[DIR_WEST] = 3;
+        entry_cells_by_dir[DIR_NORTH] = 3;
 
-        exit_cells_by_dir[DIR_NORTH] = 2;
-        exit_cells_by_dir[DIR_EAST] = 2;
+        exit_cells_by_dir[DIR_NORTH] = 5;
+        exit_cells_by_dir[DIR_EAST] = 5;
+
+        // adj[0].push_back(3); 
+        // adj[3].push_back(4); 
+        // adj[4].push_back(5);
+        // adj[5].push_back(2); 
+        // adj[0].push_back(1); 
+        // adj[1].push_back(2);
+
+        // entries = {0};
+        // exits = {2};
+
+        // entry_cells_by_dir[DIR_WEST] = 0;
+        // entry_cells_by_dir[DIR_NORTH] = 0;
+
+        // exit_cells_by_dir[DIR_NORTH] = 2;
+        // exit_cells_by_dir[DIR_EAST] = 2;
     }
     else if (type == SectionType::Induct_C_TOP) {
         width = 3;
         height = 2;
 
-        adj[0].push_back(1); 
-        adj[1].push_back(2); 
-        adj[2].push_back(5);
-        adj[5].push_back(4); 
-        adj[4].push_back(3); 
-        adj[3].push_back(0);
+        adj[3].push_back(4); 
+        adj[4].push_back(5); 
+        adj[5].push_back(8);
+        adj[8].push_back(7); 
+        adj[7].push_back(6); 
+        adj[6].push_back(3);
 
-        entries = {3, 5};
-        exits = {3, 5};
+        entries = {6, 8};
+        exits = {6, 8};
 
-        entry_cells_by_dir[DIR_EAST] = 5;
-        entry_cells_by_dir[DIR_SOUTH] = 3;
+        entry_cells_by_dir[DIR_EAST] = 8;
+        entry_cells_by_dir[DIR_SOUTH] = 6;
 
-        exit_cells_by_dir[DIR_SOUTH] = 5;
-        exit_cells_by_dir[DIR_WEST] = 3;
+        exit_cells_by_dir[DIR_SOUTH] = 8;
+        exit_cells_by_dir[DIR_WEST] = 6;
+
+    //     adj[0].push_back(1); 
+    //     adj[1].push_back(2); 
+    //     adj[2].push_back(5);
+    //     adj[5].push_back(4); 
+    //     adj[4].push_back(3); 
+    //     adj[3].push_back(0);
+
+    //     entries = {3, 5};
+    //     exits = {3, 5};
+
+    //     entry_cells_by_dir[DIR_EAST] = 5;
+    //     entry_cells_by_dir[DIR_SOUTH] = 3;
+
+    //     exit_cells_by_dir[DIR_SOUTH] = 5;
+    //     exit_cells_by_dir[DIR_WEST] = 3;
     }
     else if (type == SectionType::Induct_N_TOP) {
         width = 3;
         height = 2;
 
-        adj[0].push_back(3); 
+        adj[3].push_back(6); 
+        adj[8].push_back(7); 
+        adj[7].push_back(6);
+        adj[8].push_back(5); 
         adj[5].push_back(4); 
         adj[4].push_back(3);
-        adj[5].push_back(2); 
-        adj[2].push_back(1); 
-        adj[1].push_back(0);
 
-        entries = {5};
-        exits = {3};
+        entries = {8};
+        exits = {6};
 
-        entry_cells_by_dir[DIR_EAST] = 5;
-        entry_cells_by_dir[DIR_SOUTH] = 5;
+        entry_cells_by_dir[DIR_EAST] = 8;
+        entry_cells_by_dir[DIR_SOUTH] = 8;
 
-        exit_cells_by_dir[DIR_SOUTH] = 3;
-        exit_cells_by_dir[DIR_WEST] = 3;
+        exit_cells_by_dir[DIR_SOUTH] = 6;
+        exit_cells_by_dir[DIR_WEST] = 6;
+
+        // adj[0].push_back(3); 
+        // adj[5].push_back(4); 
+        // adj[4].push_back(3);
+        // adj[5].push_back(2); 
+        // adj[2].push_back(1); 
+        // adj[1].push_back(0);
+
+        // entries = {5};
+        // exits = {3};
+
+        // entry_cells_by_dir[DIR_EAST] = 5;
+        // entry_cells_by_dir[DIR_SOUTH] = 5;
+
+        // exit_cells_by_dir[DIR_SOUTH] = 3;
+        // exit_cells_by_dir[DIR_WEST] = 3;
     }
     else if (type == SectionType::Travel_LEFT_BOTTOM) {
         width = 1;
@@ -281,45 +345,73 @@ void SectionTemplate::setup_connectivity() {
         width = 1;
         height = 2;
 
-        entries = {0};
-        exits = {0};
+        entries = {3};
+        exits = {3};
 
-        entry_cells_by_dir[DIR_WEST] = 0;
+        entry_cells_by_dir[DIR_WEST] = 3;
 
-        exit_cells_by_dir[DIR_NORTH] = 0;
+        exit_cells_by_dir[DIR_NORTH] = 3;
+
+        // entries = {0};
+        // exits = {0};
+
+        // entry_cells_by_dir[DIR_WEST] = 0;
+
+        // exit_cells_by_dir[DIR_NORTH] = 0;
     }
     else if (type == SectionType::Corner_LEFT_BOTTOM) {
         width = 1;
         height = 2;
 
-        entries = {0};
-        exits = {0};
+        entries = {3};
+        exits = {3};
 
-        entry_cells_by_dir[DIR_NORTH] = 0;
+        entry_cells_by_dir[DIR_NORTH] = 3;
 
-        exit_cells_by_dir[DIR_EAST] = 0;
+        exit_cells_by_dir[DIR_EAST] = 3;
+
+        // entries = {0};
+        // exits = {0};
+
+        // entry_cells_by_dir[DIR_NORTH] = 0;
+
+        // exit_cells_by_dir[DIR_EAST] = 0;
     }
     else if (type == SectionType::Corner_RIGHT_TOP) {
         width = 1;
         height = 2;
 
-        entries = {3};
-        exits = {3};
+        entries = {6};
+        exits = {6};
 
-        entry_cells_by_dir[DIR_SOUTH] = 3;
+        entry_cells_by_dir[DIR_SOUTH] = 6;
 
-        exit_cells_by_dir[DIR_WEST] = 3;
+        exit_cells_by_dir[DIR_WEST] = 6;
+
+        // entries = {3};
+        // exits = {3};
+
+        // entry_cells_by_dir[DIR_SOUTH] = 3;
+
+        // exit_cells_by_dir[DIR_WEST] = 3;
     }
     else if (type == SectionType::Corner_LEFT_TOP) {
         width = 1;
         height = 2;
 
-        entries = {3};
-        exits = {3};
+        entries = {6};
+        exits = {6};
 
-        entry_cells_by_dir[DIR_EAST] = 3;
+        entry_cells_by_dir[DIR_EAST] = 6;
 
-        exit_cells_by_dir[DIR_SOUTH] = 3;
+        exit_cells_by_dir[DIR_SOUTH] = 6;
+
+        // entries = {3};
+        // exits = {3};
+
+        // entry_cells_by_dir[DIR_EAST] = 3;
+
+        // exit_cells_by_dir[DIR_SOUTH] = 3;
     }
 }
 
@@ -432,8 +524,9 @@ vector<pair<int, int>> Section::get_internal_path(int start_time, int entry_idx,
     // [수정된 부분] 
     // 1. Template에 미리 계산해둔 path_table에 직접 접근합니다.
     // 복사를 방지하기 위해 const reference(&)를 사용합니다.
+
     const vector<int>& static_path = info->path_table[entry_idx][exit_idx];
-    
+
     // (예외 처리: 만약 경로가 없다면 빈 벡터가 반환되므로 아래 루프가 안 돌고 안전함)
     if (static_path.empty() && entry_idx != exit_idx) {
         // 경로가 없는데 입/출구가 다르다면 오류 상황 (로깅 필요)
@@ -442,17 +535,20 @@ vector<pair<int, int>> Section::get_internal_path(int start_time, int entry_idx,
     
     // 2. 대기 리스트를 카운팅 맵으로 변환
     // wait_nodes = {4, 4, 6} -> counts[4]=2, counts[6]=1
-    unordered_map<int, int> wait_counts;
+    std::unordered_map<int, int> wait_counts;
     for(int node : wait_nodes) {
         wait_counts[node]++;
     }
     
     int current_time = start_time;
 
+    
+
     // 3. 경로 전개 (Traverse)
     for (int cell_idx : static_path) {
         
         // A. 이동: 해당 셀에 도착
+        std::cout << "full_path_update"  << cell_idx << std::endl;
         full_path.push_back({current_time, cell_idx});
         
         // B. 대기: 여기서 기다려야 하는지 확인
@@ -462,6 +558,7 @@ vector<pair<int, int>> Section::get_internal_path(int start_time, int entry_idx,
             // 대기 횟수만큼 제자리 걸음 (시간만 증가, 위치는 그대로)
             for(int k=0; k<duration; ++k) {
                 current_time++;
+                std::cout << "full_path_update"  << cell_idx << std::endl;
                 full_path.push_back({current_time, cell_idx});
             }
         }
@@ -469,7 +566,6 @@ vector<pair<int, int>> Section::get_internal_path(int start_time, int entry_idx,
         // C. 다음 칸으로 가기 위해 시간 증가
         current_time++;
     }
-    
     return full_path;
 }
 

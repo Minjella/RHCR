@@ -41,6 +41,7 @@ MAPFSolver* set_solver(const BasicGraph& G, const boost::program_options::variab
 	else if (solver_name == "SIPP")
 	{
 		path_planner = new SIPP();
+		
 	}
 	else
 	{
