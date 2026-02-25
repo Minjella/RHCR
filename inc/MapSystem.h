@@ -5,6 +5,7 @@
 #include <utility>
 #include "Section.h"
 #include "SectionState.h"
+#include "BasicGraph.h"
 
 
 class MapSystem {
@@ -17,6 +18,8 @@ class MapSystem {
         
         std::map<std::pair<int, int>, Section*> cell_registry;
 
+        const BasicGraph& G;
+
 
         // 맵 범위 정보
         int max_grid_x = 0;
@@ -24,8 +27,8 @@ class MapSystem {
 
     public:
         std::map<int, Section*> sections_by_id;
-        
-        MapSystem();
+
+        MapSystem(const BasicGraph& G);
         ~MapSystem();
 
         // 초기화 및 해제

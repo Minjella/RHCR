@@ -7,7 +7,7 @@
 #include <memory>
 
 
-MapSystem::MapSystem() {
+MapSystem::MapSystem(const BasicGraph& G): G(G){
     initialize_templates();
 }
 
@@ -357,6 +357,9 @@ int MapSystem::get_distance(int section_id, int start_idx, int goal_idx, const v
     return total_distance;
 }
 
+std::vector<int> index_x = {0, 1, 2, 0, 1, 2, 0, 1, 2};
+std::vector<int> index_y = {2, 2, 2, 1, 1, 1, 0, 0, 0};
+
 double MapSystem::compute_h_value(int current_section_id, int current_index, int current_goal_id, const vector<pair<SectionState, int>>& goal_sections) 
 {
     double h_val = 0.0;
@@ -364,36 +367,50 @@ double MapSystem::compute_h_value(int current_section_id, int current_index, int
     // 1. 현재 위치 -> 바로 다음 목표(Current Goal)까지의 거리 계산
     const SectionState& current_goal = goal_sections[current_goal_id].first;
 
-    if (current_section_id == current_goal.section_id) {
-        // [케이스 A] 같은 섹션 안에 목표가 있다면? -> 미리 만들어둔 O(1) 거리 함수로 정확한 거리를 구함
-        int dist = get_distance(current_section_id, current_index, current_goal.goal_index, {});
-        h_val += (dist != -1) ? dist : 0;
-    } 
-    else {
-        // [케이스 B] 다른 섹션에 있다면? -> 장애물이 없는 텅 빈 맵 기준 맨해튼 거리(Manhattan Distance) 사용
-        // (cols는 MapSystem이 들고 있는 맵의 가로 크기라고 가정합니다)
-        int curr_x = sections_by_id[current_section_id]->anchor_x + (current_index % 3);
-        int curr_y = sections_by_id[current_section_id]->anchor_y + (current_index / 3);
-        int goal_x = sections_by_id[current_goal.section_id]->anchor_x + (current_goal.goal_index % 3);
-        int goal_y = sections_by_id[current_goal.section_id]->anchor_y + (current_goal.goal_index / 3);
+    int curr_x = sections_by_id[current_section_id]->anchor_x + index_x[current_index];
+    int curr_y = sections_by_id[current_section_id]->anchor_y + index_y[current_index];
+    int goal_x = sections_by_id[current_goal.section_id]->anchor_x + index_x[current_goal.goal_index];
+    int goal_y = sections_by_id[current_goal.section_id]->anchor_y + index_y[current_goal.goal_index];
 
-        h_val += std::abs(curr_x - goal_x) + std::abs(curr_y - goal_y);
-    }
+    int curr_cell_id = curr_x * G.cols + curr_y;
+    int goal_cell_id = goal_x * G.cols + goal_y;
+
+    h_val += G.heuristics.at(goal_cell_id)[curr_cell_id];
+    current_goal_id++;
+    // if (current_section_id == current_goal.section_id) {
+    //     // [케이스 A] 같은 섹션 안에 목표가 있다면? -> 미리 만들어둔 O(1) 거리 함수로 정확한 거리를 구함
+    //     int dist = get_distance(current_section_id, current_index, current_goal.goal_index, {});
+    //     h_val += (dist != -1) ? dist : 0;
+    // } 
+    // else {
+    //     // [케이스 B] 다른 섹션에 있다면? -> 장애물이 없는 텅 빈 맵 기준 맨해튼 거리(Manhattan Distance) 사용
+    //     // (cols는 MapSystem이 들고 있는 맵의 가로 크기라고 가정합니다)
+    //     int curr_x = sections_by_id[current_section_id]->anchor_x + index_x[current_index];
+    //     int curr_y = sections_by_id[current_section_id]->anchor_y + index_y[current_index];
+    //     int goal_x = sections_by_id[current_goal.section_id]->anchor_x + index_x[current_goal.goal_index];
+    //     int goal_y = sections_by_id[current_goal.section_id]->anchor_y + index_y[current_goal.goal_index];
+
+    //     h_val += std::abs(curr_x - goal_x) + std::abs(curr_y - goal_y);
+    // }
 
     // ✨ 2. 다중 목적지 최적화: 아직 방문 안 한 '남은 경유지들' 사이의 거리도 모두 더해줌!
     // 예: 현재 -> 목표1 계산 끝. 이제 (목표1 -> 목표2) + (목표2 -> 목표3) 거리를 더함
-    for (size_t i = current_goal_id; i < goal_sections.size() - 1; ++i) 
+    while (current_goal_id < (int) goal_sections.size()) 
     {
-        const SectionState& g1 = goal_sections[i].first;
-        const SectionState& g2 = goal_sections[i + 1].first;
+        const SectionState& g1 = goal_sections[current_goal_id - 1].first;
+        const SectionState& g2 = goal_sections[current_goal_id].first;
 
-        int g1_x = sections_by_id[g1.section_id]->anchor_x + (g1.goal_index % 3);
-        int g1_y = sections_by_id[g1.section_id]->anchor_y + (g1.goal_index / 3);
-        int g2_x = sections_by_id[g2.section_id]->anchor_x + (g2.goal_index % 3);
-        int g2_y = sections_by_id[g2.section_id]->anchor_y + (g2.goal_index / 3);
+        int g1_x = sections_by_id[g1.section_id]->anchor_x + index_x[g1.goal_index];
+        int g1_y = sections_by_id[g1.section_id]->anchor_y + index_y[g1.goal_index];
+        int g2_x = sections_by_id[g2.section_id]->anchor_x + index_x[g2.goal_index];
+        int g2_y = sections_by_id[g2.section_id]->anchor_y + index_y[g2.goal_index];
+
+        int g1_cell_id = g1_x * G.cols + g1_y;
+        int g2_cell_id = g2_x * G.cols + g2_y;
 
         // 경유지들 사이의 맨해튼 거리 누적
-        h_val += std::abs(g1_x - g2_x) + std::abs(g1_y - g2_y);
+        h_val += G.heuristics.at(g2_cell_id)[g1_cell_id];
+        current_goal_id++;
     }
 
     return h_val;

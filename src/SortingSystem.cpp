@@ -153,7 +153,7 @@ void SortingSystem::simulate(int simulation_time)
 	SIPPSection* section_path_planner;
 
 	///////////////// 추가 ////////////////////
-	MapSystem mapSys;
+	MapSystem mapSys(G);
 	mapSys.build_procedural_map(G.get_cols(), G.get_rows());
 	conversion_to_sections(mapSys, 0);
 	section_path_planner = new SIPPSection();
