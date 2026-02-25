@@ -548,7 +548,7 @@ vector<pair<int, int>> Section::get_internal_path(int start_time, int entry_idx,
     for (int cell_idx : static_path) {
         
         // A. 이동: 해당 셀에 도착
-        std::cout << "full_path_update"  << cell_idx << std::endl;
+        //std::cout << "full_path_update"  << cell_idx << std::endl;
         full_path.push_back({current_time, cell_idx});
         
         // B. 대기: 여기서 기다려야 하는지 확인
@@ -558,7 +558,7 @@ vector<pair<int, int>> Section::get_internal_path(int start_time, int entry_idx,
             // 대기 횟수만큼 제자리 걸음 (시간만 증가, 위치는 그대로)
             for(int k=0; k<duration; ++k) {
                 current_time++;
-                std::cout << "full_path_update"  << cell_idx << std::endl;
+                //std::cout << "full_path_update"  << cell_idx << std::endl;
                 full_path.push_back({current_time, cell_idx});
             }
         }
@@ -566,6 +566,7 @@ vector<pair<int, int>> Section::get_internal_path(int start_time, int entry_idx,
         // C. 다음 칸으로 가기 위해 시간 증가
         current_time++;
     }
+    //std::cout << "full_path_size" << full_path.size() << std::endl;
     return full_path;
 }
 

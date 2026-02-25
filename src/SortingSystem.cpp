@@ -211,7 +211,8 @@ void SortingSystem::simulate(int simulation_time)
 		for(int k=0;k<num_of_drives;k++){
 			SP = section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
 			for (SectionState s_state: SP){
-				std::cout << mapSys.sections_by_id[s_state.section_id]->grid_x << ", " << mapSys.sections_by_id[s_state.section_id]->grid_y << ", " << s_state.timestep<< std::endl;
+				//std::cout << "Good? " << s_state.section_id << std::endl;
+				//std::cout << mapSys.sections_by_id[s_state.section_id]->grid_x << ", " << mapSys.sections_by_id[s_state.section_id]->grid_y << ", " << s_state.timestep<< std::endl;
 			}
 		}
 

@@ -372,10 +372,10 @@ double MapSystem::compute_h_value(int current_section_id, int current_index, int
     else {
         // [케이스 B] 다른 섹션에 있다면? -> 장애물이 없는 텅 빈 맵 기준 맨해튼 거리(Manhattan Distance) 사용
         // (cols는 MapSystem이 들고 있는 맵의 가로 크기라고 가정합니다)
-        int curr_x = sections_by_id[current_section_id]->anchor_x + current_index % 3;
-        int curr_y = sections_by_id[current_section_id]->anchor_y + current_index / 3;
-        int goal_x = sections_by_id[current_goal.section_id]->anchor_x + current_goal.goal_index % 3;
-        int goal_y = sections_by_id[current_goal.section_id]->anchor_y + current_goal.goal_index / 3;
+        int curr_x = sections_by_id[current_section_id]->anchor_x + (current_index % 3);
+        int curr_y = sections_by_id[current_section_id]->anchor_y + (current_index / 3);
+        int goal_x = sections_by_id[current_goal.section_id]->anchor_x + (current_goal.goal_index % 3);
+        int goal_y = sections_by_id[current_goal.section_id]->anchor_y + (current_goal.goal_index / 3);
 
         h_val += std::abs(curr_x - goal_x) + std::abs(curr_y - goal_y);
     }
@@ -387,10 +387,10 @@ double MapSystem::compute_h_value(int current_section_id, int current_index, int
         const SectionState& g1 = goal_sections[i].first;
         const SectionState& g2 = goal_sections[i + 1].first;
 
-        int g1_x = sections_by_id[g1.section_id]->anchor_x + g1.goal_index % 3;
-        int g1_y = sections_by_id[g1.section_id]->anchor_y + g1.goal_index / 3;
-        int g2_x = sections_by_id[g2.section_id]->anchor_x + g2.goal_index % 3;
-        int g2_y = sections_by_id[g2.section_id]->anchor_y + g2.goal_index / 3;
+        int g1_x = sections_by_id[g1.section_id]->anchor_x + (g1.goal_index % 3);
+        int g1_y = sections_by_id[g1.section_id]->anchor_y + (g1.goal_index / 3);
+        int g2_x = sections_by_id[g2.section_id]->anchor_x + (g2.goal_index % 3);
+        int g2_y = sections_by_id[g2.section_id]->anchor_y + (g2.goal_index / 3);
 
         // 경유지들 사이의 맨해튼 거리 누적
         h_val += std::abs(g1_x - g2_x) + std::abs(g1_y - g2_y);
