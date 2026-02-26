@@ -196,9 +196,16 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                         // std::cout << "-- Reach Final Node --" << std::endl;
                         SectionState final_state(goal_section_id, goal_index, -1, curr->s_state.timestep + dist_to_goal);
 
-                        auto internal_path = MapSys->sections_by_id[curr->s_state.section_id]->get_internal_path(curr->s_state.timestep, curr->s_state.start_index, goal_index, cached_wait_list);
+                        // auto internal_path = MapSys->sections_by_id[curr->s_state.section_id]->get_internal_path(curr->s_state.timestep, curr->s_state.start_index, goal_index, cached_wait_list);
+                        int prev_index = -1;
 
-                        int prev_index = (internal_path.size() - 2) ? internal_path[internal_path.size() - 2].second: internal_path[0].second;
+                        if (!cached_wait_list.empty() && cached_wait_list.back() == goal_index){
+                            prev_index = goal_index;
+                        } else{
+                            const vector<int>& sp = MapSys->sections_by_id[curr->s_state.section_id]->info->path_table[curr->s_state.start_index][goal_index];
+                            prev_index = (sp.size() >= 2) ? sp[sp.size() - 2] : sp[0];
+                        }
+                        //int prev_index = (internal_path.size() - 2) ? internal_path[internal_path.size() - 2].second: internal_path[0].second;
 
                         SIPPSectionNode final_node(final_state, curr->g_val + dist_to_goal, 0, 
                                             curr->interval, curr, curr->conflicts, prev_index, cached_wait_list);
@@ -223,9 +230,16 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                         // ✨ 수정 2: 다음 목적지를 향한 경유지 노드의 h 계산
                         double next_h_val = MapSys->compute_h_value(goal_section_id, goal_index, next_goal_id, goal_sections, goal_to_goal);
                         
-                        auto internal_path = MapSys->sections_by_id[curr->s_state.section_id]->get_internal_path(curr->s_state.timestep, curr->s_state.start_index, goal_index, cached_wait_list);
+                        // auto internal_path = MapSys->sections_by_id[curr->s_state.section_id]->get_internal_path(curr->s_state.timestep, curr->s_state.start_index, goal_index, cached_wait_list);
+                        int prev_index = -1;
+                        if (!cached_wait_list.empty() && cached_wait_list.back() == goal_index) {
+                            prev_index = goal_index;
+                        } else {
+                            const vector<int>& sp = MapSys->sections_by_id[curr->s_state.section_id]->info->path_table[curr->s_state.start_index][goal_index];
+                            prev_index = (sp.size() >= 2) ? sp[sp.size() - 2] : sp[0];
+                        }
 
-                        int prev_index = (internal_path.size() - 2) ? internal_path[internal_path.size() - 2].second: internal_path[0].second;
+                        //int prev_index = (internal_path.size() - 2) ? internal_path[internal_path.size() - 2].second: internal_path[0].second;
 
                         auto waypoint_node = new SIPPSectionNode(waypoint_state, curr->g_val + dist_to_goal, 
                                                         next_h_val, curr->interval, curr, curr->conflicts, prev_index, cached_wait_list); // goal이 연결될때는 Internal_path의 -1 의 ㅑndex를 내뱉음 -> timestep이 겹치ㅣ 않도록
@@ -362,7 +376,7 @@ void SIPPSection::generate_node(const SecInterval& interval, SIPPSectionNode* cu
         }
     }
     
-    int wait_time = current_wait_list->size();
+    //int wait_time = current_wait_list->size();
 
     // 3. g_val 계산 (이동 시간 + 대기 시간) -> 시간적 비용만 철저히 관리
     double g_val = curr->g_val + travel_cost + plus_wait_time; 
