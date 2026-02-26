@@ -201,20 +201,63 @@ void SortingSystem::simulate(int simulation_time)
 			std::cout << "}"<< std::endl;
 
 		}
+		double runtime = 0;
+		clock_t start_clock = std::clock();
 
 		ReservationSection rs;
 		rs = ReservationSection();
 		rs.clear();
 
-		SectionPath SP;
-		// single agent pathfinding test
-		for(int k=0;k<num_of_drives;k++){
-			SP = section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
-			for (SectionState s_state: SP){
-				//std::cout << "Good? " << s_state.section_id << std::endl;
-				//std::cout << mapSys.sections_by_id[s_state.section_id]->grid_x << ", " << mapSys.sections_by_id[s_state.section_id]->grid_y << ", " << s_state.timestep<< std::endl;
-			}
+		std::vector<SectionPath> SectionPaths;
+		SectionPaths.resize(num_of_drives);
+
+		std::vector<SectionPath*> SectionPathPtrs;
+		SectionPathPtrs.reserve(SectionPaths.size());
+
+		for (int i = 0; i < SectionPaths.size(); ++i) {
+			// 각 SectionPath의 메모리 주소를 담습니다.
+			SectionPathPtrs.push_back(&SectionPaths[i]);
 		}
+
+		// single agent pathfinding test
+		for(int k = 0; k < num_of_drives; k++) {
+			// 1. 경로 계산 (결과는 SP에 담김)
+			SectionPath SP = section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
+			
+			// 2. 경로가 비어있지 않은 경우에만 저장
+			if (!SP.empty()) {
+				// ✨ 핵심: std::move를 써서 SP의 소유권을 SectionPaths[k]로 넘깁니다. (복사 0초)
+				SectionPaths[k] = std::move(SP);
+			}
+
+			/* // 검증용 출력은 별도의 루프로 빼거나, 필요할 때만 사용하세요.
+			for (const auto& s_state : SectionPaths[k]) {
+				// std::cout << s_state.section_id << ... 
+			}
+			*/
+		}
+
+		std::unordered_set<int> high_priority_agents;
+
+		rs.build(SectionPathPtrs, {1}, &mapSys);
+
+		rs.clear();
+
+		rs.build(SectionPathPtrs, {0}, &mapSys);
+
+		SectionPaths[1] = section_path_planner->run_section(start_sections[1], goal_sections[1], rs, 1, 8, &mapSys);
+
+		runtime = (std::clock() - start_clock) * 1.0 / CLOCKS_PER_SEC;
+
+		std::cout << "runtime: " << runtime << std::endl; 
+		int cost_sum=0;
+		for(int k = 0; k < num_of_drives; k++){
+			cost_sum += SectionPaths[k].back().timestep;
+			std::cout << "cost: " << SectionPaths[k].back().timestep << std::endl;
+		}
+		std::cout << "total_cost: " << cost_sum << std::endl;
+
+		
 
 
 

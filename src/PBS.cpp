@@ -937,7 +937,7 @@ void PBS::print_results() const
 		std::cout << "Nodesout,";
 
 	std::cout << runtime << "," <<
-        LL_num_expanded << ", " << LL_num_generated << ", " <<
+        //LL_num_expanded << ", " << LL_num_generated << ", " <<
 		HL_num_expanded << "," << HL_num_generated << "," <<
 		solution_cost << "," << min_sum_of_costs << "," <<
 		avg_path_length << "," << dummy_start->num_of_collisions << "," <<

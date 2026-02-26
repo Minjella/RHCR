@@ -75,7 +75,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
 {
     //std::cout << "-- Run Section Start --" << std::endl;
     num_expanded = 0; num_generated = 0; runtime = 0;
-    clock_t start_clock = std::clock();
+    //clock_t start_clock = std::clock();
 
     std::vector<double> goal_to_goal = MapSys->goal_to_goal_dist(goal_sections);
     // 시작 노드의 섹션 ID
@@ -215,8 +215,8 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                         SectionPath path = updatePath(&final_node);
                         releaseClosedListNodes();
                         open_list.clear(); focal_list.clear();
-                        runtime = (std::clock() - start_clock) * 1.0 / CLOCKS_PER_SEC;
-                        std::cout << "cost: " << path.back().timestep << ", ExpandNode: "<< num_expanded <<", GenerateNode: " << num_generated << ", RunTime: " << runtime << std::endl;
+                        //runtime = (std::clock() - start_clock) * 1.0 / CLOCKS_PER_SEC;
+                        //std::cout << "cost: " << path.back().timestep << ", ExpandNode: "<< num_expanded <<", GenerateNode: " << num_generated << ", RunTime: " << runtime << std::endl;
 
                         
                         return path;
