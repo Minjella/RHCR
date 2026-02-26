@@ -77,11 +77,13 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
     num_expanded = 0; num_generated = 0; runtime = 0;
     clock_t start_clock = std::clock();
 
+    std::vector<double> goal_to_goal = MapSys->goal_to_goal_dist(goal_sections);
     // 시작 노드의 섹션 ID
     int start_section_id = start_state.section_id;
 
     // ✨ 수정 1: 초기 시작 지점의 h 계산 (MapSys 사용)
-    double h_val = MapSys->compute_h_value(start_section_id, start_state.start_index, 0, goal_sections); 
+
+    double h_val = MapSys->compute_h_value(start_section_id, start_state.start_index, 0, goal_sections, goal_to_goal); 
 
     // 1. 출발지의 Safe Interval 찾기
     SecInterval start_interval = std::make_tuple(0, 0, 0);
@@ -147,18 +149,18 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
             // O(1) 거리 계산 함수 호출
             // std::cout << "-- section_id == goal_section_id --" << std::endl;
 
-            find_wait_list(curr->s_state.section_id, curr->s_state.start_index, goal_index, curr->s_state.timestep, rs, MapSys, goal_section_id, goal_index, cached_wait_list);
+            int dist_to_goal = find_wait_list(curr->s_state.section_id, curr->s_state.start_index, goal_index, curr->s_state.timestep, rs, MapSys, goal_section_id, goal_index, cached_wait_list);
             
-            int dist_to_goal = -1;
+            // int dist_to_goal = -1;
             bool can_expand = true;
 
-            // wait_list가 존재한다면, wait_list update -> 존재하지 않는다면은 수정해야함 // wati_list = {-1}인 경우 node생성 실패를 내보내야함.
-            if (!cached_wait_list.empty() && cached_wait_list.front() == -1) {
-                dist_to_goal = -1;
-            } else {
-                // wait_list가 비어있거나({}), 정상적인 대기 목록이 있는 경우 모두 정상 계산!
-                dist_to_goal = MapSys->get_distance(goal_section_id, curr->s_state.start_index, goal_index, cached_wait_list);
-            }
+            // // wait_list가 존재한다면, wait_list update -> 존재하지 않는다면은 수정해야함 // wati_list = {-1}인 경우 node생성 실패를 내보내야함.
+            // if (!cached_wait_list.empty() && cached_wait_list.front() == -1) {
+            //     dist_to_goal = -1;
+            // } else {
+            //     // wait_list가 비어있거나({}), 정상적인 대기 목록이 있는 경우 모두 정상 계산!
+            //     dist_to_goal = MapSys->get_distance(goal_section_id, curr->s_state.start_index, goal_index, cached_wait_list);
+            // }
 
             //std::cout << "dist_to_goal" << dist_to_goal << std::endl;
 
@@ -186,7 +188,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
 
                 if (can_expand){
                     int next_goal_id = curr->goal_id + 1;
-                    dist_to_goal = MapSys->get_distance(goal_section_id, curr->s_state.start_index, goal_index, cached_wait_list);
+                    dist_to_goal += wait_time_at_goal;
 
                     // 🏁 4-A. 최종 목적지 도착 완료
                     if (next_goal_id == (int)goal_sections.size())
@@ -219,7 +221,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                         SectionState waypoint_state(goal_section_id, goal_index, -1, curr->s_state.timestep + dist_to_goal);
                         
                         // ✨ 수정 2: 다음 목적지를 향한 경유지 노드의 h 계산
-                        double next_h_val = MapSys->compute_h_value(goal_section_id, goal_index, next_goal_id, goal_sections);
+                        double next_h_val = MapSys->compute_h_value(goal_section_id, goal_index, next_goal_id, goal_sections, goal_to_goal);
                         
                         auto internal_path = MapSys->sections_by_id[curr->s_state.section_id]->get_internal_path(curr->s_state.timestep, curr->s_state.start_index, goal_index, cached_wait_list);
 
@@ -246,7 +248,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
         }
 
         // 5. 이웃 섹션 확장 로직
-        auto neighbors_map = MapSys->sections_by_id[curr->s_state.section_id]->neighbors;
+        const auto& neighbors_map = MapSys->sections_by_id[curr->s_state.section_id]->neighbors;
 
         // 5-1. map 순회 (Key: 현재 섹션의 출구(exit_idx), Value: 연결된 타겟 정보들)
         for (const auto& [curr_exit_index, connections] : neighbors_map) 
@@ -261,16 +263,9 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                 // 엣지 비용 (출구 밖으로 나가는 비용, 보통 1이거나 구조체 내부 값을 사용)
                 int edge_cost = 1; // port.edge_cost 가 있다면 그것으로 교체
 
-                int internal_cost = -1;
-                find_wait_list(curr->s_state.section_id, curr->s_state.start_index, curr_exit_index, curr->s_state.timestep, rs, MapSys, next_section_id, next_start_index, cached_wait_list);
-                // wati_list = {-1}인 경우 node생성 실패를 내보내야함.
+                
+                int internal_cost = find_wait_list(curr->s_state.section_id, curr->s_state.start_index, curr_exit_index, curr->s_state.timestep, rs, MapSys, next_section_id, next_start_index, cached_wait_list);
 
-                if (!cached_wait_list.empty() && cached_wait_list.front() != -1){
-                    internal_cost = -1;
-                }
-                else {
-                    internal_cost = MapSys->get_distance(curr->s_state.section_id, curr->s_state.start_index, curr_exit_index, cached_wait_list);
-                }
                 // 만약 현재 위치에서 이 출구로 가는 길이 막혀있다면, 노드 확장 skip
                 if (internal_cost == -1) continue;
                 
@@ -278,7 +273,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                 int arrival_time = curr->s_state.timestep + total_travel_cost;
 
                 // 다음 섹션으로 넘어갔을 때의 다음 h 계산
-                double next_h_val = MapSys->compute_h_value(next_section_id, next_start_index, curr->goal_id, goal_sections);
+                double next_h_val = MapSys->compute_h_value(next_section_id, next_start_index, curr->goal_id, goal_sections, goal_to_goal);
 
                 // 안전 구간(Safe Interval) 확인
                 const auto& safe_intervals = rs.get_safe_intervals(next_section_id);
@@ -379,7 +374,7 @@ void SIPPSection::generate_node(const SecInterval& interval, SIPPSectionNode* cu
     SectionState next_state(next_section_id, next_start_index, -1, timestep);
 
     // 6. 노드 생성 (부모의 출구 curr_exit_index를 내 노드에 기록해둠)
-    SIPPSectionNode dummy_node(next_state, g_val, h_val, interval, curr, next_conflicts, curr_exit_index, final_wait_list);
+    SIPPSectionNode dummy_node(next_state, interval, curr->goal_id);
     //auto next = new SIPPSectionNode(next_state, g_val, h_val, interval, curr, next_conflicts, curr_exit_index, final_wait_list);
 
     auto it = allNodes_table.find(&dummy_node);
@@ -469,7 +464,7 @@ inline void SIPPSection::releaseClosedListNodes()
     allNodes_table.clear();
 }
 
-void SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list){
+int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list){
     // initialization -> 그냥 open_list를 만드는건가? 근데 왜 SIPP의 list로 만들지?
 
     wait_list.clear();
@@ -482,7 +477,7 @@ void SIPPSection::find_wait_list(int section_id, int start_index, int exit_index
 
     if (initial_paths.empty()){
         wait_list.push_back(-1);
-        return; // 경로가 없으면 에러 처리
+        return -1; // 경로가 없으면 에러 처리
     } 
     int curr_time = initial_paths[0].first;
 
@@ -496,7 +491,7 @@ void SIPPSection::find_wait_list(int section_id, int start_index, int exit_index
                 std::cout << "impossible path" << std::endl;
                 wait_list.clear();
                 wait_list.push_back(-1);
-                return; // 경로 없음
+                return -1; // 경로 없음
             }
 
             wait_list.push_back(curr_index);
@@ -511,12 +506,19 @@ void SIPPSection::find_wait_list(int section_id, int start_index, int exit_index
                 std::cout << "impossible path" << std::endl;
                 wait_list.clear();
                 wait_list.push_back(-1);
-                return; // 경로 없음
+                return -1; // 경로 없음
             }
             wait_list.push_back(exit_index);
             curr_time += 1;
         }
     }
+
+    int path_cost = (int)initial_paths.size() - 1 + (int)wait_list.size();
+
+    return path_cost;
     // std::cout << "wait_list empty? " << wait_list.empty()  << std::endl;
 
 }
+
+
+    

@@ -80,6 +80,13 @@ public:
         }
     }
 
+    SIPPSectionNode(const SectionState& state, const SecInterval& iv, int goal_id_)
+    : StateTimeAStarNode(State(-1,-1), 0, 0, nullptr, 0),
+      s_state(state), parent(nullptr), interval(iv), parent_exit_index(-1)
+    {
+        goal_id = goal_id_;
+    }
+
     // 노드 중복 체크를 위한 EqNode
     struct EqNode
     {
@@ -146,6 +153,6 @@ private:
 
     inline void releaseClosedListNodes();
 
-    void find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list);
+    int find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list);
 };
 

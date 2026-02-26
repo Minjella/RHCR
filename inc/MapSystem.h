@@ -45,7 +45,8 @@ class MapSystem {
         const std::map<std::pair<int, int>, Section*>& get_sections() const { return sections; }
         pair<Section*, int> get_section_at_grid(int grid_x, int grid_y);
         int get_distance(int section_id, int start_idx, int goal_idx, const vector<int>& wait_nodes);
-        double compute_h_value(int current_section_id, int current_index, int current_goal_id, const vector<pair<SectionState, int>>& goal_sections);
+        double compute_h_value(int current_section_id, int current_index, int current_goal_id, const vector<pair<SectionState, int>>& goal_sections, std::vector<double> goal_to_goal);
+        std::vector<double> goal_to_goal_dist(const vector<pair<SectionState, int>>& goal_sections);
 
     private:
         // 내부 로직: 두 섹션 연결 시도
