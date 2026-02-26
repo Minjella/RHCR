@@ -470,52 +470,44 @@ int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index,
     wait_list.clear();
 
     // std::cout << "initial_paths empty"  << start_index << exit_index << std::endl;
-    vector<pair<int, int>> initial_paths = MapSys->sections_by_id[section_id]->get_internal_path(timestep, start_index, exit_index, wait_list);
-    if (initial_paths.empty()){
-        // std::cout << "initial_paths empty " << static_cast<int>(MapSys->sections_by_id[section_id]->info->type) << start_index << exit_index << std::endl;
-    }
-
-    if (initial_paths.empty()){
+    const vector<int>& static_path = MapSys->sections_by_id[section_id]->info->path_table[start_index][exit_index];
+    if (static_path.empty() && start_index != exit_index) {
         wait_list.push_back(-1);
-        return -1; // 경로가 없으면 에러 처리
+        return -1;
     } 
-    int curr_time = initial_paths[0].first;
 
-    for (size_t i = 0; i < initial_paths.size() - 1; ++i){
-        int curr_index = initial_paths[i].second;
-        int next_index = initial_paths[i+1].second;
+    int curr_time = timestep;
 
-        while (!rs.is_cell_safe(curr_time + 1, section_id, next_index)){
+    for (size_t i = 0; i < static_path.size() - 1; ++i) {
+        int curr_index = static_path[i];
+        int next_index = static_path[i + 1];
 
-            if (!rs.is_cell_safe(curr_time + 1, section_id, curr_index)){
-                std::cout << "impossible path" << std::endl;
+        while (!rs.is_cell_safe(curr_time + 1, section_id, next_index)) {
+            if (!rs.is_cell_safe(curr_time + 1, section_id, curr_index)) {
                 wait_list.clear();
                 wait_list.push_back(-1);
-                return -1; // 경로 없음
+                return -1;
             }
-
             wait_list.push_back(curr_index);
-            curr_time += 1;
+            curr_time++;
         }
-        curr_time += 1;
+        curr_time++;
     }
 
-    if (section_id != next_section_id){
-        while (!rs.is_cell_safe(curr_time + 1, next_section_id, next_start_index)){
-            if (!rs.is_cell_safe(curr_time + 1, section_id, exit_index)){
-                std::cout << "impossible path" << std::endl;
+    if (section_id != next_section_id) {
+        int exit_index = static_path.back();
+        while (!rs.is_cell_safe(curr_time + 1, next_section_id, next_start_index)) {
+            if (!rs.is_cell_safe(curr_time + 1, section_id, exit_index)) {
                 wait_list.clear();
                 wait_list.push_back(-1);
-                return -1; // 경로 없음
+                return -1;
             }
             wait_list.push_back(exit_index);
-            curr_time += 1;
+            curr_time++;
         }
     }
 
-    int path_cost = (int)initial_paths.size() - 1 + (int)wait_list.size();
-
-    return path_cost;
+    return (int)(static_path.size() - 1) + (int)wait_list.size();
     // std::cout << "wait_list empty? " << wait_list.empty()  << std::endl;
 
 }
