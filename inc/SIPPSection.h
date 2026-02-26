@@ -146,6 +146,6 @@ private:
 
     inline void releaseClosedListNodes();
 
-    std::vector<int> find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index);
+    void find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list);
 };
 

@@ -54,7 +54,7 @@ class ReservationSection {
         std::unordered_map<int, std::map<int, int>> section_timeline;
 
         // SIT (Safe Interval Table) SectionID -> Value
-        std::unordered_map<int, std::list<SecInterval>> sit_cache;
+        std::unordered_map<int, std::vector<SecInterval>> sit_cache;
 
         // Key: SectionKey (Time | Section) -> Value: Agent ID vector
         // CBS에서 제약을 걸거나, 맵의 문이 닫히는 경우 사용
@@ -107,7 +107,7 @@ class ReservationSection {
 
         // void merge_intervals(std::list<SecInterval>& intervals) const;
 
-        std::list<SecInterval> get_safe_intervals(int section_id, int capacity);
+        const std::vector<SecInterval>& get_safe_intervals(int section_id);
 
         bool is_cell_safe(int time, int section_id, int cell_idx) const;
         

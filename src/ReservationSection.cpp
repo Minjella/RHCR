@@ -312,23 +312,15 @@ void ReservationSection::update_sit(int section_id){
 
 
 
-std::list<SecInterval> ReservationSection::get_safe_intervals(int section_id, int capacity){
+const std::vector<SecInterval>& ReservationSection::get_safe_intervals(int section_id){
     // 캐시가 없다면 우선 전체 혼잡도 프로필을 만듦
-    if (sit_cache.find(section_id) == sit_cache.end()){
+    auto it = sit_cache.find(section_id);
+    if (it == sit_cache.end()) {
         update_sit(section_id);
+        it = sit_cache.find(section_id); // 업데이트 후 다시 찾기
     }
 
-    std::list<SecInterval> safe_intervals;
-
-    // 전체 구간 중, 현재 인원 < capacity 인 구간만 뽑아서 반환
-    for (const auto& interval: sit_cache[section_id]){
-        int agents_in_section = std::get<2>(interval);
-        
-        if (agents_in_section < capacity){
-            safe_intervals.push_back(interval);
-        }
-    }
-    return safe_intervals;
+    return it -> second;
 }
 
 bool ReservationSection::is_cell_safe(int time, int section_id, int cell_idx) const
