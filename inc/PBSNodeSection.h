@@ -1,15 +1,15 @@
 #pragma once
 #include "common.h"
 #include "PriorityGraph.h"
-#include "States.h"
+#include "SectionState.h"
 
-class PBSNode
+class PBSNodeSection
 {
 public:
 	// the following is used to comapre nodes in the OPEN list
 	struct compare_node 
 	{
-		bool operator()(const PBSNode* n1, const PBSNode* n2) const
+		bool operator()(const PBSNodeSection* n1, const PBSNodeSection* n2) const
 		{
             if (n1->f_val == n2->f_val)
             {
@@ -19,7 +19,7 @@ public:
 		}
 	};  
 
-	typedef fibonacci_heap< PBSNode*, compare<PBSNode::compare_node> >::
+	typedef fibonacci_heap< PBSNodeSection*, compare<PBSNodeSection::compare_node> >::
 	    handle_type open_handle_t;
 
 	// conflicts in the current paths
@@ -28,10 +28,10 @@ public:
 	// The chosen conflict
 	Conflict conflict;
 
-	PBSNode* parent;
+	PBSNodeSection* parent;
 
 
-    list< pair<int, Path> > paths; // <agent_id, path>
+    list< pair<int, SectionPath> > paths; // <agent_id, path>
     std::pair<int, int> priority; // a1 < a2
 
     PriorityGraph priorities;
@@ -52,10 +52,9 @@ public:
 
 	void clear();
 
-	PBSNode(): parent(nullptr), g_val(0), h_val(0), earliest_collision(INT_MAX), time_expanded(0) {}
-	~PBSNode(){};
+	PBSNodeSection(): parent(nullptr), g_val(0), h_val(0), earliest_collision(INT_MAX), time_expanded(0) {}
+	~PBSNodeSection(){};
 
 
 private:
 };
-
