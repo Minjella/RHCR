@@ -10,6 +10,7 @@ public:
     int c; // param for induct assignment
 
 	SortingSystem(const SortingGrid& G, MAPFSolver& solver);
+    SortingSystem(const SortingGrid& G, MAPFSolver& solver, MAPFSolver& solver_section);
     ~SortingSystem();
 
     void simulate(int simulation_time);

@@ -15,6 +15,7 @@ class BasicSystem
 public:
     // params for MAPF algotithms
 	MAPFSolver& solver;
+    MAPFSolver* solver_section;
 	bool hold_endpoints;
 	bool useDummyPaths;
     int time_limit;
@@ -35,6 +36,7 @@ public:
     int k_robust;
 
     BasicSystem(const BasicGraph& G, MAPFSolver& solver);
+    BasicSystem(const BasicGraph& G, MAPFSolver& solver, MAPFSolver& solver_section);
     ~BasicSystem();
 
 	// TODO

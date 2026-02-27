@@ -98,7 +98,59 @@ MAPFSolver* set_solver(const BasicGraph& G, const boost::program_options::variab
 	
 }
 
+MAPFSolver* set_solver_section(const BasicGraph& G, const boost::program_options::variables_map& vm)
+{
+	string solver_name = vm["single_agent_solver"].as<string>();
+	SingleAgentSolver* path_planner;
+	MAPFSolver* mapf_solver;
+	if (solver_name == "ASTAR")
+	{
+		path_planner = new StateTimeAStar();
+	}
+	else if (solver_name == "SIPP")
+	{
+		path_planner = new SIPP();
+		
+	}
+	else
+	{
+		cout << "Single-agent solver " << solver_name << "does not exist!" << endl;
+		exit(-1);
+	}
 
+	SIPPSection* section_path_planner;
+	section_path_planner = new SIPPSection();
+
+	solver_name = vm["solver"].as<string>();
+
+	if (solver_name == "PBS")
+	{
+		// pbs_section으로 교체 필요
+		PBS* pbs = new PBS(G, *path_planner, *section_path_planner);
+		pbs->lazyPriority = vm["lazyP"].as<bool>();
+        auto prioritize_start = vm["prioritize_start"].as<bool>();
+        if (vm["hold_endpoints"].as<bool>() or vm["dummy_paths"].as<bool>())
+            prioritize_start = false;
+        pbs->prioritize_start = prioritize_start;
+        pbs->setRT(vm["CAT"].as<bool>(), prioritize_start);
+		mapf_solver = pbs;
+	}
+	else
+	{
+		cout << "Solver " << solver_name << "does not exist!" << endl;
+		exit(-1);
+	}
+
+	if (vm["id"].as<bool>())
+	{
+		return new ID(G, *path_planner, *mapf_solver);
+	}
+	else
+	{
+		return mapf_solver;
+	}
+	
+}
 
 
 
@@ -120,6 +172,7 @@ int main(int argc, char** argv)
 		("seed,d", po::value<int>(), "random seed")
 		("screen,s", po::value<int>()->default_value(1), "screen option (0: none; 1: results; 2:all)")
 		("solver", po::value<string>()->default_value("PBS"), "solver (LRA, PBS, WHCA, ECBS)")
+		("section", po::value<bool>()->default_value(true), "section-based search")
 		("id", po::value<bool>()->default_value(false), "independence detection")
 		("single_agent_solver", po::value<string>()->default_value("SIPP"), "single-agent solver (ASTAR, SIPP)")
 		("lazyP", po::value<bool>()->default_value(false), "use lazy priority")
@@ -204,7 +257,11 @@ int main(int argc, char** argv)
 		 if (!G.load_map(vm["map"].as<std::string>()))
 			 return -1;
 		 MAPFSolver* solver = set_solver(G, vm);
-		 SortingSystem system(G, *solver);
+		 MAPFSolver* solver_section = nullptr;
+		 if (vm["section"].as<bool>()){
+			MAPFSolver* solver_section = set_solver_section(G, vm);
+		 }
+		 SortingSystem system(G, *solver, *solver_section);
 		 assert(!system.hold_endpoints);
 		 assert(!system.useDummyPaths);
 		 set_parameters(system, vm);
