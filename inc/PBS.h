@@ -43,6 +43,7 @@ public:
 
 
     PBS(const BasicGraph& G, SingleAgentSolver& path_planner);
+    PBS(const BasicGraph& G, SingleAgentSolver& path_planner, SIPPSection& section_path_planner);
 	~PBS();
 
     void update_paths(PBSNode* curr);

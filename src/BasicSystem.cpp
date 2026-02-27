@@ -684,6 +684,39 @@ void BasicSystem::solve()
 										+ std::to_string(num_of_drives) + "," + std::to_string(seed));
 }
 
+void BasicSystem::solve_by_Section(MapSystem &mapSys)
+{
+    LRA_called = false;
+	LRAStar lra(G, solver.path_planner);
+	lra.simulation_window = simulation_window;
+	lra.k_robust = k_robust;
+	solver.clear();
+	
+    update_initial_constraints(solver.initial_constraints);
+
+    conversion_to_sections(mapSys, timestep);
+
+    // // solve
+    // bool sol = solver.run_section(start_sections, goal_sections, time_limit);
+    // if (sol)
+    // {
+    //     if (log)
+    //         solver.save_constraints_in_goal_node(outfile + "/goal_nodes/" + std::to_string(timestep) + ".gv");
+    //     update_paths(solver.section_solution);
+    // }
+    // else
+    // {
+    //     lra.resolve_conflicts(solver.solution);
+    //     update_paths(lra.solution);
+    // }
+
+    // if (log)
+    //     solver.save_search_tree(outfile + "/search_trees/" + std::to_string(timestep) + ".gv");
+
+	//  solver.save_results(outfile + "/solver.csv", std::to_string(timestep) + "," 
+	// 									+ std::to_string(num_of_drives) + "," + std::to_string(seed));
+}
+
 bool BasicSystem::solve_by_WHCA(vector<Path>& planned_paths,
 	const vector<State>& new_starts, const vector< vector<pair<int, int> > >& new_goal_locations)
 {

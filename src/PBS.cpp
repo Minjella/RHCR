@@ -815,6 +815,9 @@ void PBS::resolve_conflict(const Conflict& conflict, PBSNode* n1, PBSNode* n2)
 PBS::PBS(const BasicGraph& G, SingleAgentSolver& path_planner) : MAPFSolver(G, path_planner),
         lazyPriority(false), best_node(nullptr) {}
 
+PBS::PBS(const BasicGraph& G, SingleAgentSolver& path_planner, SIPPSection& section_path_planner) : MAPFSolver(G, path_planner, section_path_planner),
+        lazyPriority(false), best_node(nullptr) {}
+
 
 inline void PBS::release_closed_list()
 {

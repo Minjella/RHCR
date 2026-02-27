@@ -1,5 +1,7 @@
 #pragma once
 #include "PBSNode.h"
+#include "PBSNodeSection.h"
+#include "SIPPSection.h"
 #include "SIPP.h"
 #include <ctime>
 
@@ -19,9 +21,11 @@ public:
 	double avg_path_length;
 	double min_sum_of_costs;
     vector<Path> solution;
+	vector<SectionPath> section_solution;
 
 	// initial data
 	ReservationTable initial_rt;
+	ReservationSection initial_rs;
 	vector<Path> initial_paths;
     list< tuple<int, int, int> > initial_constraints; // <agent, location, timestep>:
     // only this agent can stay in this location before this timestep.
@@ -30,6 +34,7 @@ public:
 
 
 	SingleAgentSolver& path_planner;
+	SIPPSection* section_path_planner;
 	// Runs the algorithm until the problem is solved or time is exhausted 
     virtual bool run(const vector<State>& starts,
             const vector< vector<pair<int, int> > >& goal_locations,  // an ordered list of pairs of <location, release time>
@@ -37,6 +42,7 @@ public:
 
 
 	MAPFSolver(const BasicGraph& G, SingleAgentSolver& path_planner);
+	MAPFSolver(const BasicGraph& G, SingleAgentSolver& path_planner, SIPPSection& section_path_planner);
 	~MAPFSolver();
 
 	// Save results
@@ -60,5 +66,6 @@ protected:
     vector<vector<bool> > cat; // conflict avoidance table
     vector<unordered_set< pair<int, int> > > constraint_table;
     ReservationTable rt;
+	ReservationSection rs;
 };
 

@@ -49,6 +49,9 @@ MAPFSolver* set_solver(const BasicGraph& G, const boost::program_options::variab
 		exit(-1);
 	}
 
+	SIPPSection* section_path_planner;
+	section_path_planner = new SIPPSection();
+
 	solver_name = vm["solver"].as<string>();
 	if (solver_name == "ECBS")
 	{
@@ -60,7 +63,8 @@ MAPFSolver* set_solver(const BasicGraph& G, const boost::program_options::variab
 	}
 	else if (solver_name == "PBS")
 	{
-		PBS* pbs = new PBS(G, *path_planner);
+		// PBS* pbs = new PBS(G, *path_planner);
+		PBS* pbs = new PBS(G, *path_planner, *section_path_planner);
 		pbs->lazyPriority = vm["lazyP"].as<bool>();
         auto prioritize_start = vm["prioritize_start"].as<bool>();
         if (vm["hold_endpoints"].as<bool>() or vm["dummy_paths"].as<bool>())
@@ -91,7 +95,10 @@ MAPFSolver* set_solver(const BasicGraph& G, const boost::program_options::variab
 	{
 		return mapf_solver;
 	}
+	
 }
+
+
 
 
 

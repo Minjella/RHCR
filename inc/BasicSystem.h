@@ -83,6 +83,7 @@ public:
 	void add_partial_priorities(const vector<Path>& initial_paths, PriorityGraph& initial_priorities) const;
 	list<tuple<int, int, int>> move(); // return finished tasks
 	void solve();
+    void solve_by_Section(MapSystem &mapSys);
 	void initialize_solvers();
 	bool load_records();
 	bool load_locations();
