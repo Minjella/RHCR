@@ -152,13 +152,13 @@ void SortingSystem::simulate(int simulation_time)
     this->simulation_time = simulation_time;
     initialize();
 	
-	SIPPSection* section_path_planner;
+	//SIPPSection* section_path_planner;
 
 	///////////////// 추가 ////////////////////
 	MapSystem mapSys(G);
 	mapSys.build_procedural_map(G.get_cols(), G.get_rows());
 	conversion_to_sections(mapSys, 0);
-	section_path_planner = new SIPPSection();
+	//section_path_planner = new SIPPSection();
 	//this->print_conversion_debug(G.get_cols());
 	///////////////////////////////////////////
 	
@@ -224,8 +224,8 @@ void SortingSystem::simulate(int simulation_time)
 		// single agent pathfinding test
 		for(int k = 0; k < num_of_drives; k++) {
 			// 1. 경로 계산 (결과는 SP에 담김)
-			SectionPath SP = section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
-			
+			SectionPath SP = solver_section->section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
+
 			// 2. 경로가 비어있지 않은 경우에만 저장
 			if (!SP.empty()) {
 				// ✨ 핵심: std::move를 써서 SP의 소유권을 SectionPaths[k]로 넘깁니다. (복사 0초)
@@ -247,7 +247,7 @@ void SortingSystem::simulate(int simulation_time)
 
 		rs.build(SectionPathPtrs, {0}, &mapSys);
 
-		SectionPaths[1] = section_path_planner->run_section(start_sections[1], goal_sections[1], rs, 1, 8, &mapSys);
+		SectionPaths[1] = solver_section->section_path_planner->run_section(start_sections[1], goal_sections[1], rs, 1, 8, &mapSys);
 
 		runtime = (std::clock() - start_clock) * 1.0 / CLOCKS_PER_SEC;
 

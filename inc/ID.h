@@ -10,6 +10,8 @@ public:
 	ID(const BasicGraph& G, SingleAgentSolver& path_planner, MAPFSolver& mapf_solver):
 		MAPFSolver(G, path_planner), solver(mapf_solver) {}
 
+	
+
 	bool run(const vector<State>& starts,
 		const vector< vector<pair<int, int> > >& goal_locations,
 		int time_limit);

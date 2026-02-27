@@ -143,10 +143,12 @@ MAPFSolver* set_solver_section(const BasicGraph& G, const boost::program_options
 
 	if (vm["id"].as<bool>())
 	{
+		cout << "Solver " << solver_name << "do this???? ID:>>>>>" << endl;
 		return new ID(G, *path_planner, *mapf_solver);
 	}
 	else
 	{
+		cout << "Solver " << solver_name << "do this???? IDfalse:>>>>>" << endl;
 		return mapf_solver;
 	}
 	
@@ -259,7 +261,8 @@ int main(int argc, char** argv)
 		 MAPFSolver* solver = set_solver(G, vm);
 		 MAPFSolver* solver_section = nullptr;
 		 if (vm["section"].as<bool>()){
-			MAPFSolver* solver_section = set_solver_section(G, vm);
+			std::cout << "make section solver?" << std::endl;
+			solver_section = set_solver_section(G, vm);
 		 }
 		 SortingSystem system(G, *solver, *solver_section);
 		 assert(!system.hold_endpoints);
