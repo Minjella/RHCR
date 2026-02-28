@@ -537,6 +537,30 @@ src/PBSNodeSection.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PBSNodeSection.cpp.s
 .PHONY : src/PBSNodeSection.cpp.s
 
+src/PBSSection.o: src/PBSSection.cpp.o
+.PHONY : src/PBSSection.o
+
+# target to build an object file
+src/PBSSection.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PBSSection.cpp.o
+.PHONY : src/PBSSection.cpp.o
+
+src/PBSSection.i: src/PBSSection.cpp.i
+.PHONY : src/PBSSection.i
+
+# target to preprocess a source file
+src/PBSSection.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PBSSection.cpp.i
+.PHONY : src/PBSSection.cpp.i
+
+src/PBSSection.s: src/PBSSection.cpp.s
+.PHONY : src/PBSSection.s
+
+# target to generate assembly for a file
+src/PBSSection.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PBSSection.cpp.s
+.PHONY : src/PBSSection.cpp.s
+
 src/PathTable.o: src/PathTable.cpp.o
 .PHONY : src/PathTable.o
 
@@ -560,6 +584,30 @@ src/PathTable.s: src/PathTable.cpp.s
 src/PathTable.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PathTable.cpp.s
 .PHONY : src/PathTable.cpp.s
+
+src/PathTableSection.o: src/PathTableSection.cpp.o
+.PHONY : src/PathTableSection.o
+
+# target to build an object file
+src/PathTableSection.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PathTableSection.cpp.o
+.PHONY : src/PathTableSection.cpp.o
+
+src/PathTableSection.i: src/PathTableSection.cpp.i
+.PHONY : src/PathTableSection.i
+
+# target to preprocess a source file
+src/PathTableSection.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PathTableSection.cpp.i
+.PHONY : src/PathTableSection.cpp.i
+
+src/PathTableSection.s: src/PathTableSection.cpp.s
+.PHONY : src/PathTableSection.s
+
+# target to generate assembly for a file
+src/PathTableSection.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lifelong.dir/build.make CMakeFiles/lifelong.dir/src/PathTableSection.cpp.s
+.PHONY : src/PathTableSection.cpp.s
 
 src/PriorityGraph.o: src/PriorityGraph.cpp.o
 .PHONY : src/PriorityGraph.o
@@ -981,9 +1029,15 @@ help:
 	@echo "... src/PBSNodeSection.o"
 	@echo "... src/PBSNodeSection.i"
 	@echo "... src/PBSNodeSection.s"
+	@echo "... src/PBSSection.o"
+	@echo "... src/PBSSection.i"
+	@echo "... src/PBSSection.s"
 	@echo "... src/PathTable.o"
 	@echo "... src/PathTable.i"
 	@echo "... src/PathTable.s"
+	@echo "... src/PathTableSection.o"
+	@echo "... src/PathTableSection.i"
+	@echo "... src/PathTableSection.s"
 	@echo "... src/PriorityGraph.o"
 	@echo "... src/PriorityGraph.i"
 	@echo "... src/PriorityGraph.s"

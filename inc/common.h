@@ -41,6 +41,24 @@ enum heuristics_type { NONE, CG, DG, WDG, STRATEGY_COUNT };
 
 typedef tuple<int, int, int, int, bool> Constraint;
 typedef tuple<int, int, int, int, int> Conflict;
+
+enum class ConflictType{
+    TILE_VERTEX, // 같은 시간, 같은 위치
+    SECTION_CAP  // capacity 초과
+    // TILE_EDGE (안씀)
+};
+
+struct SectionConflict{
+    int agent1;
+    int agent2;
+    int section_id;
+    int local_index;
+    int timestep;
+    ConflictType type;
+
+    SectionConflict(int a1, int a2, int sec_id, int loc, int t, ConflictType type)
+    : agent1(a1), agent2(a2), section_id(sec_id), local_index(loc), timestep(t), type(type) {}
+};
 // typedef vector<unordered_set<std::pair<int,int> > > ConstraintTable;
 typedef tuple<int, int, bool> Interval; // [t_min, t_max), have conflicts or not
 
@@ -53,4 +71,9 @@ ostream& operator<<(ostream& os, const Constraint& constraint);
 
 ostream& operator<<(ostream& os, const Conflict& conflict);
 
+ostream& operator<<(ostream& os, const SectionConflict& sectionconflict);
+
 ostream& operator<<(ostream& os, const Interval& interval);
+
+ostream& operator<<(ostream& os, const SecInterval secinterval);
+
