@@ -80,7 +80,8 @@ class ReservationSection {
         // PBS build function
         void build(const std::vector<SectionPath*>& paths, const std::unordered_set<int>& high_priority_agents, MapSystem* MapSys);
         
-
+        bool use_cat;
+        bool prioritize_start;
 
         //void add_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
 
