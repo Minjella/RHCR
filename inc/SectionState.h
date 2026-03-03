@@ -12,10 +12,11 @@ struct SectionState
     int timestep;               // start_index에 도착한 시간
     int goal_index;             // goal location이 포함되어있다면 index, (없다면 -1)
     std::vector<int> wait_list; // 섹션 내 대기 정보 (대기한 index list)
+    std::vector<pair<int, int>> full_path; // full_path index 저장
 
     // 1. Wait 함수: "진입 시간을 1 늦춤" (즉, 이전 섹션에서 1틱 더 있다가 옴)
     // 주의: 만약 '섹션 내부에서의 대기'를 의미한다면 wait_list에 추가하는 별도 함수가 필요할 수 있습니다.
-    SectionState wait(int current_idx) const;
+    // SectionState wait(int current_idx) const;
 
     struct Hasher
     {
@@ -43,6 +44,7 @@ struct SectionState
         timestep = other.timestep;
         goal_index = other.goal_index;
         wait_list = other.wait_list; // 벡터 복사 발생
+        full_path = other.full_path;
     }
 
     bool operator == (const SectionState& other) const
@@ -71,9 +73,9 @@ struct SectionState
           exit_index(exit_index), timestep(timestep), goal_index(-1) {}
 
     // 전체 생성
-    SectionState(int section_id, int start_index, int exit_index, int timestep, int goal_index, const std::vector<int>& waits)
+    SectionState(int section_id, int start_index, int exit_index, int timestep, int goal_index, const std::vector<int>& waits, const std::vector<pair<int, int>>& full_path)
         : section_id(section_id), start_index(start_index), 
-          exit_index(exit_index), timestep(timestep), goal_index(goal_index), wait_list(waits) {}
+          exit_index(exit_index), timestep(timestep), goal_index(goal_index), wait_list(waits), full_path(full_path) {}
 };
 
 // 출력 연산자 정의

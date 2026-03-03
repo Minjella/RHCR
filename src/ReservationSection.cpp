@@ -63,6 +63,8 @@ inline uint32_t ReservationSection::make_cell_key(int time, int section_id, int 
 void ReservationSection::build(const std::vector<SectionPath*>& paths, const std::unordered_set<int>& high_priority_agents , MapSystem* MapSys)
 {
     clear();
+    vector<pair<int, int>> internal_paths = {};
+    internal_paths.reserve(100);
 
     for (int agent_id: high_priority_agents)
     {
@@ -78,7 +80,11 @@ void ReservationSection::build(const std::vector<SectionPath*>& paths, const std
             const auto&state = path[i];
             
             // list(time, cell index)
-            vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+            // full_path로 대체 가능
+            //vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+            internal_paths.clear();
+            internal_paths = state.full_path;
+
 
             // Cell Table Update
             for (auto step: internal_paths){

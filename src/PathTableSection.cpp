@@ -18,6 +18,9 @@ inline uint32_t PathTableSection::make_cell_key(int time, int section_id, int ce
 PathTableSection::PathTableSection(const vector<SectionPath*>& paths, int window, int k_robust, MapSystem* MapSys):
     window(window), k_robust(k_robust)
 {
+    vector<pair<int, int>> internal_paths = {};
+    internal_paths.reserve(100);
+
     num_of_agents = (int)paths.size();
     for (int i = 0; i < num_of_agents; i++)
     {
@@ -28,8 +31,12 @@ PathTableSection::PathTableSection(const vector<SectionPath*>& paths, int window
                 break;
             }
 
-            vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
-            
+
+            // full_path로 교체 가능할듯
+            // vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+            internal_paths.clear();
+            internal_paths = state.full_path;
+
             if (internal_paths.empty()){
                 std::cout << "something wrong:: internal path is empty" << std::endl;
                 continue;
@@ -66,13 +73,20 @@ void PathTableSection::remove(const SectionPath* old_path, int agent, MapSystem*
     if (old_path == nullptr || old_path->empty())
         return;
 
+    vector<pair<int, int>> internal_paths = {};
+    internal_paths.reserve(100);
+    
+
     for (auto state : (*old_path))
     {
         if (state.timestep > window)
             break;
         
-        vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
-        
+        // full_path로 대체 가능
+        // vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+        internal_paths.clear();
+        internal_paths = state.full_path;
+
         if (internal_paths.empty()) continue;
 
         section_timeline[state.section_id][state.timestep] -= 1;
@@ -136,11 +150,18 @@ list<std::shared_ptr<SectionConflict> > PathTableSection::add(const SectionPath*
     // 중복 충돌 방지
     vector<bool> conflicting_agents(num_of_agents, false);
 
+    vector<pair<int, int>> internal_paths = {};
+    internal_paths.reserve(100);
+
     for (auto state : (*new_path))
     {
         if (state.timestep > window) break;
 
-        vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+        // full_path로 대체 가능
+        //vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+        internal_paths.clear();
+        internal_paths = state.full_path;
+        
         if (internal_paths.empty()) continue;
 
         // capcaity conflict
@@ -227,7 +248,11 @@ list<std::shared_ptr<SectionConflict> > PathTableSection::add(const SectionPath*
     {
         if (state.timestep > window) break;
 
-        vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+        // full_path로 대체 가능
+        //vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
+        internal_paths.clear();
+        internal_paths = state.full_path;
+        
         if (internal_paths.empty()) continue;
 
         // 섹션 진입 기록 (+1)

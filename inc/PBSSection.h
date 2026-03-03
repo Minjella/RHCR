@@ -83,16 +83,16 @@
 // 	bool generate_child(PBSNodeSection* child, PBSNodeSection* curr);
 
 // 	// conflicts
-//     void remove_conflicts(list<Conflict>& conflicts, int excluded_agent);
-//     void find_conflicts(const list<Conflict>& old_conflicts, list<Conflict> & new_conflicts, int new_agent);
-// 	void find_conflicts(list<Conflict> & conflicts, int a1, int a2);
-//     void find_conflicts(list<Conflict> & new_conflicts, int new_agent);
-//     void find_conflicts(list<Conflict> & new_conflicts);
+//     void remove_conflicts(list< SectionConflict>& conflicts, int excluded_agent);
+//     void find_conflicts(const list<SectionConflict>& old_conflicts, list<SectionConflict> & new_conflicts, int new_agent);
+// 	void find_conflicts(list<SectionConflict> & conflicts, int a1, int a2);
+//     void find_conflicts(list<SectionConflict> & new_conflicts, int new_agent);
+//     void find_conflicts(list<SectionConflict> & new_conflicts);
 
 // 	void choose_conflict(PBSNodeSection &parent);
-// 	void copy_conflicts(const list<Conflict>& conflicts, list<Conflict>& copy, int excluded_agent);
-//     void copy_conflicts(const list<Conflict>& conflicts,
-//                        list<Conflict>& copy, const vector<bool>& excluded_agents);
+// 	void copy_conflicts(const list<SectionConflict>& conflicts, list<SectionConflict>& copy, int excluded_agent);
+//     void copy_conflicts(const list<SectionConflict>& conflicts,
+//                        list<SectionConflict>& copy, const vector<bool>& excluded_agents);
 
 //     double get_path_cost(const SectionPath& path) const;
 	
@@ -111,10 +111,10 @@
 
 // 	// validate
 // 	bool validate_solution();
-//     static bool validate_consistence(const list<Conflict>& conflicts, const PriorityGraph &G) ;
+//     static bool validate_consistence(const list<SectionConflict>& conflicts, const PriorityGraph &G) ;
 
 //     // tools
 //     static bool wait_at_start(const SectionPath& path, SectionState start_section, int timestep) ;
-//     void find_replan_agents(PBSNodeSection* node, const list<Conflict>& conflicts,
+//     void find_replan_agents(PBSNodeSection* node, const list<SectionConflict>& conflicts,
 //             unordered_set<int>& replan);
 // };

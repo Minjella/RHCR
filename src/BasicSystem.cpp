@@ -911,6 +911,7 @@ void BasicSystem::conversion_to_sections(MapSystem& mapSys, int current_time)
                     -1,
                     -1,
                     goal_info.second, // 목표 index
+                    {},
                     {}
                 );
                 

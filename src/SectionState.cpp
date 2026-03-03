@@ -3,18 +3,18 @@
 #include "Section.h"
 #include <vector>
 
-
-SectionState SectionState::wait(int current_idx) const
-{
-    std::vector<int> next_wait_list = wait_list;
+// 이 함수는 안쓰는거같음
+// SectionState SectionState::wait(int current_idx) const
+// {
+//     std::vector<int> next_wait_list = wait_list;
     
-    // 2. 대기하는 시점의 index를 기록
-    next_wait_list.push_back(current_idx);
+//     // 2. 대기하는 시점의 index를 기록
+//     next_wait_list.push_back(current_idx);
 
-    // 3. timestep(진입 시간)은 변하지 않음. 
-    //    (진입은 이미 했고, 그 이후 과정에서 대기가 발생한 것이므로)
-    return SectionState(section_id, start_index, exit_index, timestep, goal_index, next_wait_list); 
-}
+//     // 3. timestep(진입 시간)은 변하지 않음. 
+//     //    (진입은 이미 했고, 그 이후 과정에서 대기가 발생한 것이므로)
+//     return SectionState(section_id, start_index, exit_index, timestep, goal_index, next_wait_list); 
+// }
 
 std::ostream & operator << (std::ostream &out, const SectionState &s)
 {

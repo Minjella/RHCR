@@ -33,6 +33,7 @@ public:
     SecInterval interval; // <start, end, occupancy>
     int parent_exit_index; // parent section에서 사용한 출구
     std::vector<int> parent_wait_list;
+    std::vector<pair<int, int>> parent_full_path;
 
     // OPEN 리스트용 비교 연산 (f-val 최소, 같으면 g-val 최대)
     struct compare_node
@@ -67,9 +68,9 @@ public:
     SIPPSectionNode() : StateTimeAStarNode(), parent(nullptr), parent_exit_index(-1) {}
 
     SIPPSectionNode(const SectionState& state, double g_val, double h_val, const SecInterval& interval,
-             SIPPSectionNode* parent, int conflicts, int parent_exit_index = -1, const std::vector<int>& parent_wait_list = {})
+             SIPPSectionNode* parent, int conflicts, int parent_exit_index = -1, const std::vector<int>& parent_wait_list = {}, const std::vector<pair<int, int>>& parent_full_path = {})
         : StateTimeAStarNode(State(-1, -1), g_val, h_val, nullptr, conflicts),  // 부모의 기존 state 무효화
-          s_state(state), parent(parent), interval(interval), parent_exit_index(parent_exit_index), parent_wait_list(parent_wait_list)
+          s_state(state), parent(parent), interval(interval), parent_exit_index(parent_exit_index), parent_wait_list(parent_wait_list), parent_full_path(parent_full_path)
     {
         if (parent != nullptr) {
             depth = parent->depth + 1;
@@ -146,13 +147,13 @@ private:
 
     void generate_node(const SecInterval& interval, SIPPSectionNode* curr, 
                                 int next_section_id, int next_start_index, int curr_exit_index,
-                                const std::vector<int>& wait_list, ReservationSection& rs,
+                                const std::vector<int>& wait_list, const std::vector<pair<int, int>>& full_path, ReservationSection& rs,
                                 double travel_cost, int arrival_time, double h_val, int section_congestion);
 
     SectionPath updatePath(const SIPPSectionNode* goal);
 
     inline void releaseClosedListNodes();
 
-    int find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list);
+    int find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path);
 };
 

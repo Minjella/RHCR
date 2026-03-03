@@ -1,7 +1,7 @@
 // #include "PBSSection.h"
 // #include <ctime>
 // #include <iostream>
-// #include "PathTable.h"
+// #include "PathTableSection.h"
 
 
 
@@ -40,7 +40,7 @@
 
 // // takes the paths_found_initially and UPDATE all (constrained) paths found for agents from curr to start
 // // also, do the same for ll_min_f_vals and paths_costs (since its already "on the way").
-// void PBS::update_paths(PBSNode* curr)
+// void PBSSection::update_paths(PBSNodeSection* curr)
 // {
 //     vector<bool> updated(num_of_agents, false);  // initialized for false
 // 	while (curr != nullptr)
