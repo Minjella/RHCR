@@ -259,10 +259,10 @@ int main(int argc, char** argv)
 		 if (!G.load_map(vm["map"].as<std::string>()))
 			 return -1;
 		 MAPFSolver* solver = set_solver(G, vm);
-		 MAPFSolver* solver_section = nullptr;
+		 PBSSection* solver_section = nullptr;
 		 if (vm["section"].as<bool>()){
 			std::cout << "make section solver?" << std::endl;
-			solver_section = set_solver_section(G, vm);
+			solver_section = dynamic_cast<PBSSection*>(set_solver_section(G, vm));
 		 }
 		 SortingSystem system(G, *solver, *solver_section);
 		 assert(!system.hold_endpoints);

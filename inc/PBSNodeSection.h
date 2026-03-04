@@ -23,10 +23,10 @@ public:
 	    handle_type open_handle_t;
 
 	// conflicts in the current paths
-	std::list<Conflict> conflicts;
+	std::list<SectionConflict> conflicts;
 	
 	// The chosen conflict
-	Conflict conflict;
+	SectionConflict conflict;
 
 	PBSNodeSection* parent;
 
@@ -52,7 +52,7 @@ public:
 
 	void clear();
 
-	PBSNodeSection(): parent(nullptr), g_val(0), h_val(0), earliest_collision(INT_MAX), time_expanded(0) {}
+	PBSNodeSection(): parent(nullptr), g_val(0), h_val(0), earliest_collision(INT_MAX), time_expanded(0), conflict(-1, -1, -1, -1, -1, ConflictType::TILE_VERTEX) {}
 	~PBSNodeSection(){};
 
 

@@ -7,7 +7,7 @@
 
 
 BasicSystem::BasicSystem(const BasicGraph& G, MAPFSolver& solver): G(G), solver(solver), solver_section(nullptr), num_of_tasks(0) {}
-BasicSystem::BasicSystem(const BasicGraph& G, MAPFSolver& solver, MAPFSolver& solver_section): G(G), solver(solver), solver_section(&solver_section), num_of_tasks(0) {}
+BasicSystem::BasicSystem(const BasicGraph& G, MAPFSolver& solver, PBSSection& solver_section): G(G), solver(solver), solver_section(&solver_section), num_of_tasks(0) {}
 
 BasicSystem::~BasicSystem() {}
 
@@ -697,25 +697,25 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
 
     conversion_to_sections(mapSys, timestep);
 
-    // // solve
-    // bool sol = solver.run_section(start_sections, goal_sections, time_limit);
-    // if (sol)
-    // {
-    //     if (log)
-    //         solver.save_constraints_in_goal_node(outfile + "/goal_nodes/" + std::to_string(timestep) + ".gv");
-    //     update_paths(solver.section_solution);
-    // }
-    // else
-    // {
-    //     lra.resolve_conflicts(solver.solution);
-    //     update_paths(lra.solution);
-    // }
+    // solve
+    bool sol = solver_section->run_section(start_sections, goal_sections, time_limit, &mapSys);
+    if (sol)
+    {
+        if (log)
+            solver.save_constraints_in_goal_node(outfile + "/goal_nodes/" + std::to_string(timestep) + ".gv");
+        //update_paths(solver.section_solution);
+    }
+    else
+    {
+        lra.resolve_conflicts(solver.solution);
+        update_paths(lra.solution);
+    }
 
-    // if (log)
-    //     solver.save_search_tree(outfile + "/search_trees/" + std::to_string(timestep) + ".gv");
+    if (log)
+        solver.save_search_tree(outfile + "/search_trees/" + std::to_string(timestep) + ".gv");
 
-	//  solver.save_results(outfile + "/solver.csv", std::to_string(timestep) + "," 
-	// 									+ std::to_string(num_of_drives) + "," + std::to_string(seed));
+	 solver.save_results(outfile + "/solver.csv", std::to_string(timestep) + "," 
+										+ std::to_string(num_of_drives) + "," + std::to_string(seed));
 }
 
 bool BasicSystem::solve_by_WHCA(vector<Path>& planned_paths,

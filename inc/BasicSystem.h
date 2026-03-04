@@ -8,6 +8,7 @@
 #include "LRAStar.h"
 #include "SectionState.h"
 #include "MapSystem.h"
+#include "PBSSection.h"
 
 
 class BasicSystem
@@ -15,7 +16,7 @@ class BasicSystem
 public:
     // params for MAPF algotithms
 	MAPFSolver& solver;
-    MAPFSolver* solver_section;
+    PBSSection* solver_section;
 	bool hold_endpoints;
 	bool useDummyPaths;
     int time_limit;
@@ -36,7 +37,7 @@ public:
     int k_robust;
 
     BasicSystem(const BasicGraph& G, MAPFSolver& solver);
-    BasicSystem(const BasicGraph& G, MAPFSolver& solver, MAPFSolver& solver_section);
+    BasicSystem(const BasicGraph& G, MAPFSolver& solver, PBSSection& solver_section);
     ~BasicSystem();
 
 	// TODO

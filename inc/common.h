@@ -40,7 +40,7 @@ using std::min;
 enum heuristics_type { NONE, CG, DG, WDG, STRATEGY_COUNT };
 
 typedef tuple<int, int, int, int, bool> Constraint;
-typedef tuple<int, int, int, int, int> Conflict;
+typedef tuple<int, int, int, int, int> Conflict; // a1, a2, loc1, loc2, timestep
 
 enum class ConflictType{
     TILE_VERTEX, // 같은 시간, 같은 위치
@@ -77,3 +77,8 @@ ostream& operator<<(ostream& os, const Interval& interval);
 
 ostream& operator<<(ostream& os, const SecInterval secinterval);
 
+inline std::ostream& operator<<(std::ostream& os, const SectionConflict& c) {
+    os << "[Conflict: Agent " << c.agent1 << " vs Agent " << c.agent2 
+       << " at Loc " << c.section_id << c.local_index << ", t=" << c.timestep << "]";
+    return os;
+}

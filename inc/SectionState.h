@@ -12,7 +12,7 @@ struct SectionState
     int timestep;               // start_index에 도착한 시간
     int goal_index;             // goal location이 포함되어있다면 index, (없다면 -1)
     std::vector<int> wait_list; // 섹션 내 대기 정보 (대기한 index list)
-    std::vector<pair<int, int>> full_path; // full_path index 저장
+    std::vector<pair<int, int>> full_path; // full_path index 저장 <timestep, index>
 
     // 1. Wait 함수: "진입 시간을 1 늦춤" (즉, 이전 섹션에서 1틱 더 있다가 옴)
     // 주의: 만약 '섹션 내부에서의 대기'를 의미한다면 wait_list에 추가하는 별도 함수가 필요할 수 있습니다.

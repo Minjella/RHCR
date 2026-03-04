@@ -56,6 +56,8 @@ public:
     const BasicGraph& G;
     vector<State> starts;
     vector< vector<pair<int, int> > > goal_locations;
+	vector<SectionState> start_sections;
+	vector<vector<pair<SectionState, int>>> goal_sections;
     int num_of_agents;
 	int time_limit;
 

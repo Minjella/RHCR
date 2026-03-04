@@ -60,7 +60,7 @@ inline uint32_t ReservationSection::make_cell_key(int time, int section_id, int 
 //     sit_cache.erase(section_id);
 // }
 
-void ReservationSection::build(const std::vector<SectionPath*>& paths, const std::unordered_set<int>& high_priority_agents , MapSystem* MapSys)
+void ReservationSection::build(const std::vector<SectionPath*>& paths, const boost::unordered_set<int>& high_priority_agents , MapSystem* MapSys)
 {
     clear();
     vector<pair<int, int>> internal_paths = {};
