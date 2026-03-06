@@ -52,6 +52,7 @@ SectionPath SIPPSection::updatePath(const SIPPSectionNode* goal)
         }
 
         if (curr->parent == nullptr){
+
             int t = curr->s_state.timestep - 1;
             for (; t>=0; t--){
                 std::cout << "start time error"  << std::endl;
@@ -153,9 +154,11 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
         {
             // O(1) 거리 계산 함수 호출
             // std::cout << "-- section_id == goal_section_id --" << std::endl;
+            int circle_flag = -1;
 
-            int dist_to_goal = find_wait_list(curr->s_state.section_id, curr->s_state.start_index, goal_index, curr->s_state.timestep, rs, MapSys, goal_section_id, goal_index, cached_wait_list, cached_full_path);
+            int dist_to_goal = find_wait_list(curr->s_state.section_id, curr->s_state.start_index, goal_index, curr->s_state.timestep, rs, MapSys, goal_section_id, goal_index, cached_wait_list, cached_full_path, circle_flag);
             
+
             // int dist_to_goal = -1;
             bool can_expand = true;
 
@@ -291,8 +294,10 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                 // 엣지 비용 (출구 밖으로 나가는 비용, 보통 1이거나 구조체 내부 값을 사용)
                 int edge_cost = 1; // port.edge_cost 가 있다면 그것으로 교체
 
-                
-                int internal_cost = find_wait_list(curr->s_state.section_id, curr->s_state.start_index, curr_exit_index, curr->s_state.timestep, rs, MapSys, next_section_id, next_start_index, cached_wait_list, cached_full_path);
+                int circle_flag = -1; // 만약 다음 섹션 입구에 누가 있어서 출구에서 기다려야한다면, + 선회할 수 있는 section 이라면 -> section 새롭게 추가해서 선회 진행
+
+                int internal_cost = find_wait_list(curr->s_state.section_id, curr->s_state.start_index, curr_exit_index, curr->s_state.timestep, rs, MapSys, next_section_id, next_start_index, cached_wait_list, cached_full_path, circle_flag);
+
 
                 // 만약 현재 위치에서 이 출구로 가는 길이 막혀있다면, 노드 확장 skip
                 if (internal_cost == -1) continue;
@@ -315,8 +320,8 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                     // 도착 시간보다 구간 종료 시간이 빠르거나 같으면 진입 불가 (이미 닫힌 문)
                     if (std::get<1>(interval) <= arrival_time) continue;
 
+
                     // generate_node 호출 
-                    // (주의: wait_list가 필요하다면 빈 벡터 {} 대신 port.wait_list 등을 넘겨주세요)
                     generate_node(interval, curr, next_section_id, next_start_index, curr_exit_index, 
                                   cached_wait_list, cached_full_path, rs, total_travel_cost, arrival_time, next_h_val, section_congestion);
                 }
@@ -373,16 +378,16 @@ void SIPPSection::generate_node(const SecInterval& interval, SIPPSectionNode* cu
     // 2. 대기 시간 계산 (이전 섹션에서 얼마나 머무르다 넘어와야 하는가)
     int extra_wait_time = timestep - arrival_time;
     int plus_wait_time = 0;
-    std::vector<int> final_wait_list; 
-    std::vector<pair<int, int>> final_full_path; 
-    const std::vector<int>* current_wait_list = &wait_list; // 기본은 원본을 가리킴
-    const std::vector<pair<int, int>>* current_full_path = &full_path;
+    std::vector<int> final_wait_list = wait_list; 
+    std::vector<pair<int, int>> final_full_path = full_path; 
+    // const std::vector<int> current_wait_list = wait_list; // 기본은 원본을 가리킴
+    // const std::vector<pair<int, int>> current_full_path = full_path;
 
     if (extra_wait_time > 0) {
         final_wait_list = wait_list; // 이때만 어쩔 수 없이 복사
         final_full_path = full_path;
-        current_wait_list = &final_wait_list; // 이제부터는 복사본을 가리킴
-        current_full_path = &final_full_path;
+        // current_wait_list = final_wait_list; // 이제부터는 복사본을 가리킴
+        // current_full_path = final_full_path;
 
         for(int i=0; i<extra_wait_time; i++){
             if (rs.is_cell_safe(arrival_time+i, curr->s_state.section_id, curr_exit_index)){ 
@@ -414,7 +419,7 @@ void SIPPSection::generate_node(const SecInterval& interval, SIPPSectionNode* cu
     // 완전히 새로운 노드 발견
 
     if (it == allNodes_table.end())
-    {
+    { 
         auto next = new SIPPSectionNode(next_state, g_val, h_val, interval, curr, next_conflicts, curr_exit_index, final_wait_list, final_full_path);
         next->open_handle = open_list.push(next);
         next->in_openlist = true;
@@ -499,7 +504,7 @@ inline void SIPPSection::releaseClosedListNodes()
     allNodes_table.clear();
 }
 
-int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path){
+int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, int circle_flag){
     // initialization -> 그냥 open_list를 만드는건가? 근데 왜 SIPP의 list로 만들지?
 
     wait_list.clear();
@@ -532,16 +537,37 @@ int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index,
 
     if (section_id != next_section_id) {
         int exit_index = static_path.back();
+        int wait_count = 0;
+        auto sec_type = MapSys->sections_by_id[section_id]->info->type;
+        bool is_special_section = (sec_type == SectionType::Eject_CCW || 
+                                    sec_type == SectionType::Eject_CW ||
+                                    sec_type == SectionType::Induct_C_BOTTOM || 
+                                    sec_type == SectionType::Induct_C_TOP);
         while (!rs.is_cell_safe(curr_time + 1, next_section_id, next_start_index)) {
             if (!rs.is_cell_safe(curr_time + 1, section_id, exit_index)) {
-                wait_list.clear();
-                wait_list.push_back(-1);
-                return -1;
+                // 다음 섹션으로도 못가고 현재 섹션의 출구에서도 못기다리는 상황이라면?
+                if (is_special_section){
+                    next_section_id = section_id;
+                    next_start_index = MapSys->sections_by_id[section_id]->info->adj[exit_index].front();
+                    wait_count = 0;
+                    break;
+                } else{
+                    wait_list.clear();
+                    wait_list.push_back(-1);
+                    return -1;
+                }
             }
-            wait_list.push_back(exit_index);
+            wait_count++;
+            //wait_list.push_back(exit_index);
             curr_time++;
         }
+
+        for (int i = 0; i < wait_count; i++){
+            wait_list.push_back(exit_index);
+        }
     }
+
+
 
     std::unordered_map<int, int> wait_counts;
     for(int node : wait_list) {
@@ -553,7 +579,7 @@ int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index,
     for (int cell_idx : static_path) {
         
         // A. 이동: 해당 셀에 도착
-        //std::cout << "full_path_update"  << cell_idx << std::endl;
+        
         full_path.push_back({current_time, cell_idx});
         
         // B. 대기: 여기서 기다려야 하는지 확인

@@ -35,6 +35,9 @@ public:
 
 	double min_f_val = 0;
 
+    virtual bool run(const vector<State>& starts,
+            const vector< vector<pair<int, int> > >& goal_locations,  // an ordered list of pairs of <location, release time>
+            int time_limit) override;
 
 	// Runs the algorithm until the problem is solved or time is exhausted 
     bool run_section(const vector<SectionState>& start_sections,

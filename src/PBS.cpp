@@ -131,6 +131,7 @@ void PBS::find_conflicts(list<Conflict>& conflicts, int a1, int a2)
 	}
 	else
 	{
+        
 		int size1 = min(window + 1, (int)paths[a1]->size());
 		int size2 = min(window + 1, (int)paths[a2]->size());
 		for (int timestep = 0; timestep < size1; timestep++)

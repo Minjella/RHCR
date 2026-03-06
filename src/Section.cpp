@@ -459,7 +459,7 @@ void SectionTemplate::precompute_all() {
             if (dist[goal] != std::numeric_limits<int>::max()) {
                 vector<int> path;
                 int curr = goal;
-                
+
                 // 역추적 (Backtracking)
                 while (curr != start) {
                     path.push_back(curr);

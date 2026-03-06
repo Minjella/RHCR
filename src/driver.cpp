@@ -98,11 +98,11 @@ MAPFSolver* set_solver(const BasicGraph& G, const boost::program_options::variab
 	
 }
 
-MAPFSolver* set_solver_section(const BasicGraph& G, const boost::program_options::variables_map& vm)
+PBSSection* set_solver_section(const BasicGraph& G, const boost::program_options::variables_map& vm)
 {
 	string solver_name = vm["single_agent_solver"].as<string>();
 	SingleAgentSolver* path_planner;
-	MAPFSolver* mapf_solver;
+	PBSSection* mapf_solver;
 	if (solver_name == "ASTAR")
 	{
 		path_planner = new StateTimeAStar();
@@ -126,14 +126,14 @@ MAPFSolver* set_solver_section(const BasicGraph& G, const boost::program_options
 	if (solver_name == "PBS")
 	{
 		// pbs_section으로 교체 필요
-		PBS* pbs = new PBS(G, *path_planner, *section_path_planner);
-		pbs->lazyPriority = vm["lazyP"].as<bool>();
+		PBSSection* pbs_section = new PBSSection(G, *path_planner, *section_path_planner);
+		pbs_section->lazyPriority = vm["lazyP"].as<bool>();
         auto prioritize_start = vm["prioritize_start"].as<bool>();
         if (vm["hold_endpoints"].as<bool>() or vm["dummy_paths"].as<bool>())
             prioritize_start = false;
-        pbs->prioritize_start = prioritize_start;
-        pbs->setRT(vm["CAT"].as<bool>(), prioritize_start);
-		mapf_solver = pbs;
+        pbs_section->prioritize_start = prioritize_start;
+        pbs_section->setRS(vm["CAT"].as<bool>(), prioritize_start);
+		mapf_solver = pbs_section;
 	}
 	else
 	{
@@ -141,16 +141,16 @@ MAPFSolver* set_solver_section(const BasicGraph& G, const boost::program_options
 		exit(-1);
 	}
 
-	if (vm["id"].as<bool>())
-	{
-		cout << "Solver " << solver_name << "do this???? ID:>>>>>" << endl;
-		return new ID(G, *path_planner, *mapf_solver);
-	}
-	else
-	{
-		cout << "Solver " << solver_name << "do this???? IDfalse:>>>>>" << endl;
-		return mapf_solver;
-	}
+	// if (vm["id"].as<bool>())
+	// {
+	// 	cout << "Solver " << solver_name << "do this???? ID:>>>>>" << endl;
+	// 	return new ID(G, *path_planner, *mapf_solver);
+	// }
+	// else
+	// {
+	// cout << "Solver " << solver_name << "do this???? IDfalse:>>>>>" << endl;
+	return mapf_solver;
+	// }
 	
 }
 
@@ -262,7 +262,7 @@ int main(int argc, char** argv)
 		 PBSSection* solver_section = nullptr;
 		 if (vm["section"].as<bool>()){
 			std::cout << "make section solver?" << std::endl;
-			solver_section = dynamic_cast<PBSSection*>(set_solver_section(G, vm));
+			solver_section = set_solver_section(G, vm);
 		 }
 		 SortingSystem system(G, *solver, *solver_section);
 		 assert(!system.hold_endpoints);

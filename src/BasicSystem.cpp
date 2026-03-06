@@ -697,6 +697,22 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
 
     conversion_to_sections(mapSys, timestep);
 
+    // std::cout << "Convert to Section (Inside BasicSystem.cpp)" << std::endl;
+    // for(int k=0;k<num_of_drives;k++){
+	// 		std::cout << "agent " << k << std::endl;
+
+	// 		std::cout << "start section id: [" << mapSys.sections_by_id[start_sections[k].section_id]->grid_x << ", " << mapSys.sections_by_id[start_sections[k].section_id]->grid_y << "] <- (" <<  mapSys.sections_by_id[start_sections[k].section_id]->anchor_x << ", " << mapSys.sections_by_id[start_sections[k].section_id]->anchor_y << ")"<<", index: " << start_sections[k].start_index << std::endl;
+	// 		std::cout << " goal sections: { " << std::endl;
+
+	// 		// goal_locations[k]에 있는 모든 pair를 순회
+	// 		for (const auto& goal : goal_sections[k]) 
+	// 		{
+	// 			std::cout << "section id: [" << mapSys.sections_by_id[goal.first.section_id]->grid_x << ", " << mapSys.sections_by_id[goal.first.section_id]->grid_y << "] <- (" <<  mapSys.sections_by_id[goal.first.section_id]->anchor_x << ", " << mapSys.sections_by_id[goal.first.section_id]->anchor_y << ")"<<", index: " << goal.first.goal_index << std::endl;
+	// 		}
+	// 		std::cout << "}"<< std::endl;
+
+	// 	}
+
     // solve
     bool sol = solver_section->run_section(start_sections, goal_sections, time_limit, &mapSys);
     if (sol)
@@ -923,7 +939,7 @@ void BasicSystem::conversion_to_sections(MapSystem& mapSys, int current_time)
             }
         }
     }
-    cout << "--- Section Conversion Completed ---" << endl;
+    //cout << "--- Section Conversion Completed ---" << endl;
 }
 
 

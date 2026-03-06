@@ -206,25 +206,32 @@ void SortingSystem::simulate(int simulation_time)
 		double runtime = 0;
 		clock_t start_clock = std::clock();
 
-		// ReservationSection rs;
-		// rs = ReservationSection();
-		// rs.clear();
+		ReservationSection rs;
+		rs = ReservationSection();
+		rs.clear();
 
-		// std::vector<SectionPath> SectionPaths;
-		// SectionPaths.resize(num_of_drives);
+		std::vector<SectionPath> SectionPaths;
+		SectionPaths.resize(num_of_drives);
 
-		// std::vector<SectionPath*> SectionPathPtrs;
-		// SectionPathPtrs.reserve(SectionPaths.size());
+		std::vector<SectionPath*> SectionPathPtrs;
+		SectionPathPtrs.reserve(SectionPaths.size());
 
-		// for (int i = 0; i < SectionPaths.size(); ++i) {
-		// 	// 각 SectionPath의 메모리 주소를 담습니다.
-		// 	SectionPathPtrs.push_back(&SectionPaths[i]);
-		// }
+		for (int i = 0; i < SectionPaths.size(); ++i) {
+			// 각 SectionPath의 메모리 주소를 담습니다.
+			SectionPathPtrs.push_back(&SectionPaths[i]);
+		}
 
-		// // single agent pathfinding test
-		// for(int k = 0; k < num_of_drives; k++) {
-		// 	// 1. 경로 계산 (결과는 SP에 담김)
-		// 	SectionPath SP = solver_section->section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
+		// single agent pathfinding test
+		for(int k = 0; k < num_of_drives; k++) {
+			// 1. 경로 계산 (결과는 SP에 담김)
+			//std::cout << "-- OK?? --" << std::endl;
+			if (!solver_section || !solver_section->section_path_planner) {
+				std::cerr << "Error: Solver or Planner is NULL!" << std::endl;
+				return; 
+			}
+			//std::cout << "Calling run_section with k = " << k << std::endl;
+
+			SectionPath SP = solver_section->section_path_planner->run_section(start_sections[k], goal_sections[k], rs, k, 8, &mapSys);
 
 		// 	// 2. 경로가 비어있지 않은 경우에만 저장
 		// 	if (!SP.empty()) {
@@ -237,7 +244,7 @@ void SortingSystem::simulate(int simulation_time)
 		// 		// std::cout << s_state.section_id << ... 
 		// 	}
 		// 	*/
-		// }
+		}
 
 		// std::unordered_set<int> high_priority_agents;
 
@@ -274,6 +281,8 @@ void SortingSystem::simulate(int simulation_time)
 		
 
 		solve();
+		std::cout << mapSys.sections_by_id[5]->info->path_table[5][5].size() << std::endl;
+
 		solve_by_Section(mapSys);
 
 		// move drives
@@ -321,6 +330,10 @@ void SortingSystem::simulate(int simulation_time)
 void SortingSystem::initialize()
 {
 	initialize_solvers();
+
+	solver_section->k_robust = k_robust;
+	solver_section->window = planning_window;
+	solver_section->screen = screen;
 
 	starts.resize(num_of_drives);
 	goal_locations.resize(num_of_drives);

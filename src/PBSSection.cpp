@@ -5,6 +5,14 @@
 
 
 
+bool PBSSection::run(const vector<State>& starts,
+        const vector< vector<pair<int, int> > >& goal_locations,  // an ordered list of pairs of <location, release time>
+        int time_limit){
+            std::cout << "Warning: PBSSection::run() called but not implemented." << std::endl;
+            return false;
+        }
+
+
 
 
 void PBSSection::clear()
@@ -64,7 +72,7 @@ void PBSSection::copy_conflicts(const list<SectionConflict>& conflicts,
 	list<SectionConflict>& copy, const vector<bool>& excluded_agents)
 {
     clock_t t = clock();
-	for (auto conflict : conflicts)
+	for (const auto& conflict : conflicts)
 	{
 		if (!excluded_agents[conflict.agent1] && !excluded_agents[conflict.agent2])
 		{
@@ -78,7 +86,7 @@ void PBSSection::copy_conflicts(const list<SectionConflict>& conflicts,
 void PBSSection::copy_conflicts(const list<SectionConflict>& conflicts, list<SectionConflict>& copy, int excluded_agent)
 {
     clock_t t = clock();
-    for (auto conflict : conflicts)
+    for (const auto& conflict : conflicts)
     {
         if (excluded_agent != conflict.agent1 && excluded_agent != conflict.agent2)
         {
@@ -91,46 +99,58 @@ void PBSSection::copy_conflicts(const list<SectionConflict>& conflicts, list<Sec
 
 void PBSSection::find_conflicts(list<SectionConflict>& conflicts, int a1, int a2)
 {
+    // std::cout << "find_conflicts agent: " << a1 << ", " << a2 << std::endl;
     clock_t t = clock();
     if (paths[a1] == nullptr || paths[a2] == nullptr)
         return;
 
-    int size1 = min(window + 1, (int)paths[a1]->size());
-    int size2 = min(window + 1, (int)paths[a2]->size());
+    // std::cout << "paths size: " << paths[a2]->size() << std::endl;
+    // std::cout << "paths timestep: " << paths[a2]->back().timestep << std::endl;
+    // std::cout << "window: " << window << std::endl;
+    // std::cout << "full_path: " << (*paths[a2])[0].full_path.size();
+    // std::cout << "timestep: " << (*paths[a2])[1].timestep << std::endl;
+    int size1 = min(window + 1, paths[a1]->back().timestep);
+    int size2 = min(window + 1, paths[a2]->back().timestep);
     int sec_idx_1 = 0;
     int sec_idx_2 = 0;
     int sec_inside_idx_1 = 0;
     int sec_inside_idx_2 = 0;
     int section_id_1 = (*paths[a1])[sec_idx_1].section_id;
     int section_id_2 = (*paths[a2])[sec_idx_2].section_id;
-    auto& internal_path_1 = (*paths[a1])[sec_idx_1].full_path;
-    auto& internal_path_2 = (*paths[a2])[sec_idx_2].full_path;
-
+    auto* internal_path_1 = &((*paths[a1])[sec_idx_1].full_path);
+    auto* internal_path_2 = &((*paths[a2])[sec_idx_2].full_path);
+    
+    //std::cout << "max timestep" << size1 << std::endl;
     for (int timestep = 0; timestep < size1; timestep++)
     {
         if (size2 <= timestep)
             break;
 
-        if (sec_idx_1 + 1 < paths[a1]->size() && (*paths[a1])[sec_idx_1+1].timestep >= timestep){
+        if (sec_idx_1 + 1 < paths[a1]->size() && (*paths[a1])[sec_idx_1+1].timestep == timestep){
             sec_idx_1 += 1;
             section_id_1 = (*paths[a1])[sec_idx_1].section_id;
             sec_inside_idx_1 = 0;
-            internal_path_1 = (*paths[a1])[sec_idx_1].full_path;
+            internal_path_1 = &((*paths[a1])[sec_idx_1].full_path);
         }
-        if (sec_idx_2 + 1 < paths[a2]->size() && (*paths[a2])[sec_idx_2+1].timestep >= timestep){
+        if (sec_idx_2 + 1 < paths[a2]->size() && (*paths[a2])[sec_idx_2+1].timestep == timestep){
             sec_idx_2 += 1;
             section_id_2 = (*paths[a2])[sec_idx_2].section_id;
-            sec_inside_idx_1 = 0;
-            internal_path_2 = (*paths[a2])[sec_idx_2].full_path;
+            sec_inside_idx_2 = 0;
+            internal_path_2 = &((*paths[a2])[sec_idx_2].full_path);
         }
 
+        //std::cout << "timestep: " << timestep << ", internal_path_1 size: " << (*internal_path_1).size() << ", cur index: " << sec_inside_idx_1 << ", internal_path_2 size: " << (*internal_path_2).size() << ", cur index: " << sec_inside_idx_2 << std::endl;
+        //std::cout << "timestep: " << timestep  << "agent " << a1 << ": (" << section_id_1 << ", " <<  (*internal_path_1)[sec_inside_idx_1].second << ")" << "// agent " << a2 << ": (" << section_id_2 << ", " << (*internal_path_2)[sec_inside_idx_2].second << ")" << std::endl; 
+
         if (section_id_1 == section_id_2){
-            if (internal_path_1[sec_inside_idx_1] == internal_path_2[sec_inside_idx_2]){
-                conflicts.emplace_back(a1, a2, section_id_1, internal_path_1[sec_inside_idx_1].second, timestep, ConflictType::TILE_VERTEX);
+            // 같은 위치(vertex)에 있다면 충돌!
+            if ((*internal_path_1)[sec_inside_idx_1].second == (*internal_path_2)[sec_inside_idx_2].second){
+                conflicts.emplace_back(a1, a2, section_id_1, (*internal_path_1)[sec_inside_idx_1].second, timestep, ConflictType::TILE_VERTEX);
                 runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
                 return;
             }
         }
+
 
         sec_inside_idx_1 += 1;
         sec_inside_idx_2 += 1;
@@ -189,41 +209,65 @@ void PBSSection::remove_conflicts(list<SectionConflict>& conflicts, int excluded
     runtime_copy_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
 }
 
+// void PBSSection::choose_conflict(PBSNodeSection &node)
+// {
+//     clock_t t = clock();
+// 	if (node.conflicts.empty())
+// 	    return;
+
+//     node.conflict = node.conflicts.front();
+
+// 	// choose the earliest
+//     for (auto conflict : node.conflicts)
+//     {
+//         if (conflict.timestep < node.conflict.timestep)
+//             node.conflict = conflict;
+//     }
+//     node.earliest_collision = node.conflict.timestep;
+
+//     if (!nogood.empty())
+//     {
+//         for (auto conflict : node.conflicts)
+//         {
+//             int a1 = conflict.agent1;
+//             int a2 = conflict.agent2;
+//             for (auto p : nogood)
+//             {
+//                 if ((a1 == p.first && a2 == p.second) || (a1 == p.second && a2 == p.first))
+//                 {
+//                     node.conflict = conflict;
+//                     runtime_choose_conflict += (double)(std::clock() - t) / CLOCKS_PER_SEC;
+//                     return;
+//                 }
+//             }
+//         }
+//     }
+
+//     runtime_choose_conflict += (double)(std::clock() - t) / CLOCKS_PER_SEC;
+// }
+
 void PBSSection::choose_conflict(PBSNodeSection &node)
 {
-    clock_t t = clock();
-	if (node.conflicts.empty())
-	    return;
+    if (node.conflicts.empty()) return;
 
-    node.conflict = node.conflicts.front();
-
-	// choose the earliest
-    for (auto conflict : node.conflicts)
-    {
-        if (conflict.timestep < node.conflict.timestep)
-            node.conflict = conflict;
-    }
+    // 1. 가장 이른 conflict 선택
+    node.conflict = *std::min_element(node.conflicts.begin(), node.conflicts.end(),
+        [](const SectionConflict& a, const SectionConflict& b){
+            return a.timestep < b.timestep;
+        });
     node.earliest_collision = node.conflict.timestep;
 
-    if (!nogood.empty())
-    {
-        for (auto conflict : node.conflicts)
-        {
-            int a1 = conflict.agent1;
-            int a2 = conflict.agent2;
-            for (auto p : nogood)
-            {
-                if ((a1 == p.first && a2 == p.second) || (a1 == p.second && a2 == p.first))
-                {
-                    node.conflict = conflict;
-                    runtime_choose_conflict += (double)(std::clock() - t) / CLOCKS_PER_SEC;
-                    return;
-                }
+    // 2. nogood 우선 처리
+    if (!nogood.empty()) {
+        for (const auto& conflict : node.conflicts) {
+            auto key1 = std::make_pair(conflict.agent1, conflict.agent2);
+            auto key2 = std::make_pair(conflict.agent2, conflict.agent1);
+            if (nogood.count(key1) || nogood.count(key2)) {
+                node.conflict = conflict;
+                return;
             }
         }
     }
-
-    runtime_choose_conflict += (double)(std::clock() - t) / CLOCKS_PER_SEC;
 }
 
 
@@ -429,11 +473,14 @@ bool PBSSection::generate_child(PBSNodeSection* node, PBSNodeSection* parent, Ma
 
 bool PBSSection::generate_root_node(MapSystem* mapsys)
 {
+   // std::cout << "--- generate_root_node Start ---" << std::endl;
+    
     clock_t time = std::clock();
 	dummy_start = new PBSNodeSection();
-	
+    
 	// initialize paths_found_initially
 	paths.resize(num_of_agents, nullptr);
+    std::cout << "initial_path resize?" << num_of_agents << std::endl;
 	
     if (screen == 2)
         std::cout << "Generate root CT node ..." << std::endl;
@@ -456,8 +503,9 @@ bool PBSSection::generate_root_node(MapSystem* mapsys)
 
     for (int i = 0; i < num_of_agents; i++) 
 	{
-        if (paths[i] != nullptr)
+        if (paths[i] != nullptr){
             continue;
+        }
         SectionPath path;
         double path_cost;
         int start_section_id  = start_sections[i].section_id;
@@ -467,10 +515,13 @@ bool PBSSection::generate_root_node(MapSystem* mapsys)
         rs.build(paths, dummy_start->priorities.get_reachable_nodes(i), mapsys);
         runtime_get_higher_priority_agents += dummy_start->priorities.runtime;
         runtime_rt += (double)(std::clock() - t) / CLOCKS_PER_SEC;
-        vector< vector<double> > h_values(goal_locations[i].size());
+        //std::cout << "here????" << std::endl;
+        vector< vector<double> > h_values(goal_sections[i].size());
         t = std::clock();
+        //std::cout << "here????" << std::endl;
         path = section_path_planner->run_section(start_sections[i], goal_sections[i], rs, i, 8, mapsys);
 		runtime_plan_paths += (double)(std::clock() - t) / CLOCKS_PER_SEC;
+        //std::cout << "path cost of agent " << i << ", " << section_path_planner->path_cost << std::endl;
         path_cost = section_path_planner->path_cost;
         rs.clear();
         LL_num_expanded += section_path_planner->num_expanded;
@@ -542,7 +593,7 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
     
     this->start_sections = start_sections;
     this->goal_sections = goal_sections;
-    this->num_of_agents = starts.size();
+    this->num_of_agents = start_sections.size();
     this->time_limit = _time_limit;
 
     solution_cost = -2;
@@ -562,6 +613,7 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
 
     if (dummy_start->num_of_collisions == 0) //no conflicts at the root node
     {// found a solution (and finish the while look)
+        std::cout << "dummy end?" << std::endl;
         solution_found = true;
         solution_cost = dummy_start->g_val;
         best_node = dummy_start;
@@ -684,12 +736,12 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
     min_sum_of_costs = 0;
     for (int i = 0; i < num_of_agents; i++)
     {
-        int start_loc = starts[i].location;
+        //int start_loc = starts[i].location;
         std::vector<double> dist_goal = mapsys->goal_to_goal_dist(goal_sections[i]);
         min_sum_of_costs += mapsys->compute_h_value(start_sections[i].section_id, start_sections[i].start_index, 0, goal_sections[i], dist_goal);
     }
-	if (screen > 0) // 1 or 2
-		print_results();
+	// if (screen > 0) // 1 or 2
+	print_results();
 	return solution_found;
 }
 
