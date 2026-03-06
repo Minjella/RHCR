@@ -20,8 +20,8 @@ struct NeighborInfo{
     int curr_exit_index;
     int next_start_index;
     vector<int> wait_list;
-    double internal_cost; // curr_start -> curr_exit 비용
-    double edge_cost; // curr_exit -> next_start 비용
+    double internal_cost; 
+    double edge_cost; 
 };
 
 // SIPPSectionNode가 StateTimeAStarNode를 상속받도록 하여 호환성 유지
@@ -32,8 +32,6 @@ public:
     SIPPSectionNode* parent;
     SecInterval interval; // <start, end, occupancy>
     int parent_exit_index; // parent section에서 사용한 출구
-    // std::vector<int> parent_wait_list;
-    // std::vector<pair<int, int>> parent_full_path;
     int wait_at_exit;
     int wait_at_goal;
 
@@ -109,12 +107,9 @@ public:
     struct Hasher {
         size_t operator()(const SIPPSectionNode* n) const {
             size_t seed = 0;
-            // ★ 핵심: SectionState::Hasher 대신 위치 정보만 직접 해싱!
             boost::hash_combine(seed, n->s_state.section_id);
             boost::hash_combine(seed, n->s_state.start_index);
-            
-            boost::hash_combine(seed, std::get<0>(n->interval)); // interval start
-            // (interval start만으로도 같은 구역 내에서는 고유하게 구별되므로 충분합니다)
+            boost::hash_combine(seed, std::get<0>(n->interval)); 
             boost::hash_combine(seed, n->goal_id);
             return seed;
         }
@@ -124,28 +119,50 @@ public:
 class SIPPSection : public SingleAgentSolver
 {
 public:
-    // 기존 프레임워크가 실수로 옛날 방식으로 호출하면 에러를 뿜게 만듦
     Path run(const BasicGraph& G, const State& start, 
              const vector<pair<int, int>>& goal_location, 
              ReservationTable& RT) override;
 
-    // 기존 ReservationTable 대신 우리가 만든 ReservationSection을 받음
     SectionPath run_section(const SectionState& start_state, 
                                      const vector<pair<SectionState, int>>& goal_sections, 
                                      ReservationSection& rs, 
                                      int agent_id, int capacity, MapSystem* MapSys);
 
     string getName() const override { return "SIPPSection"; }
+    
     SIPPSection() : SingleAgentSolver() {}
-
-
+    
+    // ✨ [추가] 소멸자: 프로그램 종료 시 메모리 풀 일괄 해제
+    ~SIPPSection() {
+        for (auto node : node_pool) {
+            delete node;
+        }
+    }
 
 private:
     fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::compare_node>> open_list;
     fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::secondary_compare_node>> focal_list;
     
-    // Closed List: RHCR 스타일로 unordered_set 사용
     unordered_set<SIPPSectionNode*, SIPPSectionNode::Hasher, SIPPSectionNode::EqNode> allNodes_table;
+
+    // ✨ [추가] 메모리 풀
+    std::vector<SIPPSectionNode*> node_pool;
+    int pool_index = 0;
+
+    // ✨ [추가] 메모리 풀 할당 및 초기화 헬퍼
+    SIPPSectionNode* allocate_node() {
+        if (pool_index >= (int)node_pool.size()) {
+            // 공간 부족 시 한 번에 1000개씩 할당해둠
+            for(int i = 0; i < 1000; ++i) {
+                node_pool.push_back(new SIPPSectionNode());
+            }
+        }
+        SIPPSectionNode* node = node_pool[pool_index++];
+        // [가장 중요] 이전 탐색에서 쓰인 잔여 플래그 완벽 초기화! (이거 없으면 길 못 찾음)
+        node->in_openlist = false;
+        node->parent = nullptr;
+        return node;
+    }
 
     void generate_node(const SecInterval& interval, SIPPSectionNode* curr, 
                                 int next_section_id, int next_start_index, int curr_exit_index,
@@ -156,6 +173,5 @@ private:
 
     inline void releaseClosedListNodes();
 
-    int find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int& next_section_id, int& next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, int circle_flag, bool build_path =false);
+    int find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int& next_section_id, int& next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, int circle_flag, bool build_path = false);
 };
-
