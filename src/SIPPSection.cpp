@@ -504,7 +504,7 @@ inline void SIPPSection::releaseClosedListNodes()
     allNodes_table.clear();
 }
 
-int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int next_section_id, int next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, int circle_flag){
+int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int& next_section_id, int& next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, int circle_flag){
     // initialization -> 그냥 open_list를 만드는건가? 근데 왜 SIPP의 list로 만들지?
 
     wait_list.clear();
@@ -547,14 +547,20 @@ int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index,
             if (!rs.is_cell_safe(curr_time + 1, section_id, exit_index)) {
                 // 다음 섹션으로도 못가고 현재 섹션의 출구에서도 못기다리는 상황이라면?
                 if (is_special_section){
-                    next_section_id = section_id;
-                    next_start_index = MapSys->sections_by_id[section_id]->info->adj[exit_index].front();
-                    wait_count = 0;
-                    break;
-                } else{
-                    wait_list.clear();
-                    wait_list.push_back(-1);
-                    return -1;
+                    int loop_start_index = MapSys->sections_by_id[section_id]->info->adj[exit_index].front();
+    
+                    // 선회하러 들어가는 칸이 당장 다음 턴(curr_time + 1)에 안전한지 묻기
+                    if (rs.is_cell_safe(curr_time + 1, section_id, loop_start_index)) {
+                        next_section_id = section_id;
+                        next_start_index = loop_start_index;
+                        wait_count = 0;
+                        break;
+                    } else {
+                        // 앞으로도 못가, 여기서 기다리지도 못해, 심지어 선회하러 들어가는 길도 막혔어! (완전 고립)
+                        wait_list.clear();
+                        wait_list.push_back(-1);
+                        return -1;
+                    }
                 }
             }
             wait_count++;

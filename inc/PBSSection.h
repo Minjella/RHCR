@@ -51,13 +51,13 @@ public:
 
     void update_paths(PBSNodeSection* curr);
 	// Save results
-	void save_results(const std::string &fileName, const std::string &instanceName) const;
-	void save_search_tree(const std::string &fileName) const;
-	void save_constraints_in_goal_node(const std::string &fileName) const;
+	void save_results(const std::string &fileName, const std::string &instanceName) const override;
+	void save_search_tree(const std::string &fileName) const override;
+	void save_constraints_in_goal_node(const std::string &fileName) const override;
 
-	string get_name() const {return "PBS Section"; }
+	string get_name() const override {return "PBS Section"; }
 
-	void clear();
+	void clear() override;
 
 	void setRS(bool use_cat, bool prioritize_start)
 	{
