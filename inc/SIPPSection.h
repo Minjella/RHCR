@@ -32,8 +32,10 @@ public:
     SIPPSectionNode* parent;
     SecInterval interval; // <start, end, occupancy>
     int parent_exit_index; // parent section에서 사용한 출구
-    std::vector<int> parent_wait_list;
-    std::vector<pair<int, int>> parent_full_path;
+    // std::vector<int> parent_wait_list;
+    // std::vector<pair<int, int>> parent_full_path;
+    int wait_at_exit;
+    int wait_at_goal;
 
     // OPEN 리스트용 비교 연산 (f-val 최소, 같으면 g-val 최대)
     struct compare_node
@@ -65,12 +67,12 @@ public:
     fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::compare_node>>::handle_type open_handle;
     fibonacci_heap<SIPPSectionNode*, compare<SIPPSectionNode::secondary_compare_node>>::handle_type focal_handle;
 
-    SIPPSectionNode() : StateTimeAStarNode(), parent(nullptr), parent_exit_index(-1) {}
+    SIPPSectionNode() : StateTimeAStarNode(), parent(nullptr), parent_exit_index(-1), wait_at_exit(0), wait_at_goal(0) {}
 
     SIPPSectionNode(const SectionState& state, double g_val, double h_val, const SecInterval& interval,
-             SIPPSectionNode* parent, int conflicts, int parent_exit_index = -1, const std::vector<int>& parent_wait_list = {}, const std::vector<pair<int, int>>& parent_full_path = {})
-        : StateTimeAStarNode(State(-1, -1), g_val, h_val, nullptr, conflicts),  // 부모의 기존 state 무효화
-          s_state(state), parent(parent), interval(interval), parent_exit_index(parent_exit_index), parent_wait_list(parent_wait_list), parent_full_path(parent_full_path)
+             SIPPSectionNode* parent, int conflicts, int parent_exit_index = -1, int wait_at_exit = 0, int wait_at_goal = 0)
+        : StateTimeAStarNode(State(-1, -1), g_val, h_val, nullptr, conflicts), 
+          s_state(state), parent(parent), interval(interval), parent_exit_index(parent_exit_index), wait_at_exit(wait_at_exit), wait_at_goal(wait_at_goal)
     {
         if (parent != nullptr) {
             depth = parent->depth + 1;
@@ -83,7 +85,7 @@ public:
 
     SIPPSectionNode(const SectionState& state, const SecInterval& iv, int goal_id_)
     : StateTimeAStarNode(State(-1,-1), 0, 0, nullptr, 0),
-      s_state(state), parent(nullptr), interval(iv), parent_exit_index(-1)
+      s_state(state), parent(nullptr), interval(iv), parent_exit_index(-1), wait_at_exit(0), wait_at_goal(0)
     {
         goal_id = goal_id_;
     }
@@ -147,13 +149,13 @@ private:
 
     void generate_node(const SecInterval& interval, SIPPSectionNode* curr, 
                                 int next_section_id, int next_start_index, int curr_exit_index,
-                                const std::vector<int>& wait_list, const std::vector<pair<int, int>>& full_path, ReservationSection& rs,
+                                ReservationSection& rs,
                                 double travel_cost, int arrival_time, double h_val, int section_congestion);
 
-    SectionPath updatePath(const SIPPSectionNode* goal);
+    SectionPath updatePath(const SIPPSectionNode* goal, ReservationSection& rs, MapSystem* mapsys);
 
     inline void releaseClosedListNodes();
 
-    int find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int& next_section_id, int& next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, int circle_flag);
+    int find_wait_list(int section_id, int start_index, int exit_index, int timestep, const ReservationSection& rs, MapSystem* MapSys, int& next_section_id, int& next_start_index, std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, int circle_flag, bool build_path =false);
 };
 
