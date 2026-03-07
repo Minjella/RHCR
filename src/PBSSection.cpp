@@ -613,7 +613,7 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
 
     if (dummy_start->num_of_collisions == 0) //no conflicts at the root node
     {// found a solution (and finish the while look)
-        std::cout << "dummy end?" << std::endl;
+        //std::cout << "dummy end?" << std::endl;
         solution_found = true;
         solution_cost = dummy_start->g_val;
         best_node = dummy_start;
@@ -968,5 +968,7 @@ void PBSSection::get_solution()
         avg_path_length += paths[k]->back().timestep;
     }
     avg_path_length /= num_of_agents;
+
+
 }
 

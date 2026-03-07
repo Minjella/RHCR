@@ -108,12 +108,12 @@ void ReservationSection::build(const std::vector<SectionPath*>& paths, const boo
         }
 
         // 마지막 위치에서 계속 대기
-        if (prev_section != -1){
-            section_timeline[prev_section][MAX_TIME_LIMIT] -= 1;
-            if (section_timeline[prev_section][MAX_TIME_LIMIT] == 0) {
-                section_timeline[prev_section].erase(MAX_TIME_LIMIT);
-            }
-        }
+        // if (prev_section != -1){
+        //     section_timeline[prev_section][MAX_TIME_LIMIT] -= 1;
+        //     if (section_timeline[prev_section][MAX_TIME_LIMIT] == 0) {
+        //         section_timeline[prev_section].erase(MAX_TIME_LIMIT);
+        //     }
+        // }
     }
 }
 

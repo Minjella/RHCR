@@ -80,6 +80,7 @@ public:
     void update_travel_times(unordered_map<int, double>& travel_times);
     void update_paths(const std::vector<Path*>& MAPF_paths, int max_timestep);
     void update_paths(const std::vector<Path>& MAPF_paths, int max_timestep);
+    void update_paths_section(const std::vector<SectionPath>& MAPF_paths, MapSystem* mapsys, int max_timestep);
     void update_initial_paths(vector<Path>& initial_paths) const;
     void update_initial_constraints(list< tuple<int, int, int> >& initial_constraints) const;
     

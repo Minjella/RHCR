@@ -190,6 +190,7 @@ void BasicSystem::update_start_locations()
 }
 
 
+
 void BasicSystem::update_paths(const std::vector<Path*>& MAPF_paths, int max_timestep = INT_MAX)
 {
     for (int k = 0; k < num_of_drives; k++)
@@ -332,6 +333,7 @@ bool BasicSystem::congested() const
 // return a list of finished tasks
 list<tuple<int, int, int>> BasicSystem::move()
 {
+    //std::cout << "start??" << std::endl;
     int start_timestep = timestep;
     int end_timestep = timestep + simulation_window;
 
@@ -698,7 +700,6 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
     //update_initial_constraints(solver.initial_constraints);
 
     conversion_to_sections(mapSys, 0);
-
     // std::cout << "Convert to Section (Inside BasicSystem.cpp)" << std::endl;
     // for(int k=0;k<num_of_drives;k++){
 	// 		std::cout << "agent " << k << std::endl;
@@ -721,10 +722,11 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
     {
         if (log)
             solver_section->save_constraints_in_goal_node(outfile + "/goal_nodes_section/" + std::to_string(timestep) + ".gv");
-        //update_paths(solver.section_solution);
+        update_paths_section(solver_section->section_solution, &mapSys, INT_MAX);
     }
     else
     {
+        bool sol = solver.run(starts, goal_locations, time_limit);
         lra.resolve_conflicts(solver.solution);
         update_paths(lra.solution);
     }
@@ -991,4 +993,61 @@ void BasicSystem::print_conversion_debug(int grid_cols) const
     }
 
     std::cout << "=========================================\n";
+}
+
+
+void BasicSystem::update_paths_section(const std::vector<SectionPath>& MAPF_paths,MapSystem* mapsys, int max_timestep = INT_MAX )
+{
+    std::vector<int> dx = {0, 1, 2, 0, 1, 2, 0, 1, 2};
+    std::vector<int> dy = {2, 2, 2, 1, 1, 1, 0, 0, 0};
+    
+    //std::cout << "dododod?" << std::endl;
+
+    for (int k = 0; k < num_of_drives; k++)
+    {
+        if (MAPF_paths[k].empty()) continue;
+
+        const auto& sec_path = MAPF_paths[k];
+
+        // 1. 이 에이전트 경로의 총 길이를 알아냅니다.
+        // 마지막 섹션의 마지막 full_path 요소의 시간이 최종 도착 시간입니다.
+        int agent_max_time = 0;
+        agent_max_time = sec_path.back().timestep;
+
+        //std::cout << "agent max time " << agent_max_time << std::endl;
+
+        // max_timestep 제한을 걸어줍니다. (+1은 0초부터 시작하므로 개수 맞춤)
+        int length = min(max_timestep, agent_max_time + 1);
+        
+        // 현재 전역 시간(timestep)에 새로운 경로 길이를 더해 공간을 확보합니다.
+        paths[k].resize(timestep + length); 
+
+        // 2. SectionPath를 순회하며 1초 단위로 쪼개서 넣습니다.
+        for (const auto& state : sec_path)
+        {
+            //std::cout << "agent " <<  k << ", section id: " << state.section_id << ", full_size: " << state.full_path.size() << std::endl;
+            for (const auto& step : state.full_path)
+            {
+                //std::cout << "      time: " << step.first << ", index" << step.second << std::endl;
+                int t = step.first;       // 해당 위치에 도달하는 시간
+                int index = step.second; // 해당 위치 (cell_index)
+                int x = mapsys->sections_by_id[state.section_id]->anchor_x + dx[index];
+                int y = mapsys->sections_by_id[state.section_id]->anchor_y + dy[index];
+                int location = x*G.cols + y;
+                
+
+                if (t >= length) break; // max_timestep을 넘어가면 중단
+
+                // BasicSystem의 State 구조체에 맞게 값을 넣어줍니다.
+                // (만약 State 안에 다른 변수명으로 되어 있다면 그에 맞게 수정해주세요 ex: cell_id 등)
+                paths[k][timestep + t].location = location; 
+                paths[k][timestep + t].timestep = timestep + t;
+                //std::cout << t << std::endl;
+            }
+        }
+
+        
+        
+    }
+    //std::cout << paths[0].size() << std::endl;
 }
