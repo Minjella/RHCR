@@ -480,7 +480,7 @@ bool PBSSection::generate_root_node(MapSystem* mapsys)
     
 	// initialize paths_found_initially
 	paths.resize(num_of_agents, nullptr);
-    std::cout << "initial_path resize?" << num_of_agents << std::endl;
+    //std::cout << "initial_path resize?" << num_of_agents << std::endl;
 	
     if (screen == 2)
         std::cout << "Generate root CT node ..." << std::endl;

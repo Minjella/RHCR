@@ -687,15 +687,17 @@ void BasicSystem::solve()
 
 void BasicSystem::solve_by_Section(MapSystem &mapSys)
 {
+    
+    
     LRA_called = false;
 	LRAStar lra(G, solver.path_planner);
 	lra.simulation_window = simulation_window;
 	lra.k_robust = k_robust;
 	solver.clear();
 	
-    update_initial_constraints(solver.initial_constraints);
+    //update_initial_constraints(solver.initial_constraints);
 
-    conversion_to_sections(mapSys, timestep);
+    conversion_to_sections(mapSys, 0);
 
     // std::cout << "Convert to Section (Inside BasicSystem.cpp)" << std::endl;
     // for(int k=0;k<num_of_drives;k++){
@@ -718,7 +720,7 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
     if (sol)
     {
         if (log)
-            solver.save_constraints_in_goal_node(outfile + "/goal_nodes/" + std::to_string(timestep) + ".gv");
+            solver_section->save_constraints_in_goal_node(outfile + "/goal_nodes_section/" + std::to_string(timestep) + ".gv");
         //update_paths(solver.section_solution);
     }
     else
@@ -728,9 +730,9 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
     }
 
     if (log)
-        solver.save_search_tree(outfile + "/search_trees/" + std::to_string(timestep) + ".gv");
+        solver_section->save_search_tree(outfile + "/search_trees_section/" + std::to_string(timestep) + ".gv");
 
-	 solver.save_results(outfile + "/solver.csv", std::to_string(timestep) + "," 
+	 solver_section->save_results(outfile + "/solver_section.csv", std::to_string(timestep) + "," 
 										+ std::to_string(num_of_drives) + "," + std::to_string(seed));
 }
 

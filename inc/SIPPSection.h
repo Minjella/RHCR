@@ -132,7 +132,7 @@ public:
     
     SIPPSection() : SingleAgentSolver() {}
     
-    // ✨ [추가] 소멸자: 프로그램 종료 시 메모리 풀 일괄 해제
+    // [추가] 소멸자: 프로그램 종료 시 메모리 풀 일괄 해제
     ~SIPPSection() {
         for (auto node : node_pool) {
             delete node;
@@ -145,11 +145,11 @@ private:
     
     unordered_set<SIPPSectionNode*, SIPPSectionNode::Hasher, SIPPSectionNode::EqNode> allNodes_table;
 
-    // ✨ [추가] 메모리 풀
+    // 메모리 풀
     std::vector<SIPPSectionNode*> node_pool;
     int pool_index = 0;
 
-    // ✨ [추가] 메모리 풀 할당 및 초기화 헬퍼
+    // 메모리 풀 할당 및 초기화 헬퍼
     SIPPSectionNode* allocate_node() {
         if (pool_index >= (int)node_pool.size()) {
             // 공간 부족 시 한 번에 1000개씩 할당해둠
