@@ -412,11 +412,50 @@ int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index,
         int curr_index = static_path[i];
         int next_index = static_path[i + 1];
 
+        auto cur_exit_index = MapSys->sections_by_id[section_id]->info->exits;
+
+
         while (!rs.is_cell_safe(curr_time + 1, section_id, next_index)) {
+            // 1. 현재 칸에서 기다려야 하는데, 다음 타임에 누군가 내 자리를 덮친다면? (위험)
             if (!rs.is_cell_safe(curr_time + 1, section_id, curr_index)) {
-                if (build_path) { wait_list.clear(); wait_list.push_back(-1); }
-                return -1;
+                
+                bool can_escape = false;
+                
+                // 2. 현재 내 위치가 탈출 가능한 출구(Exit)인지 확인
+                auto it = std::find(cur_exit_index.begin(), cur_exit_index.end(), curr_index);
+                
+                if (it != cur_exit_index.end()) {
+                    const auto& neighbors_map = MapSys->sections_by_id[section_id]->neighbors;
+                    
+                    // 3. for문으로 다 뒤지지 말고, map의 특성을 살려 바로 찾기 (속도 최적화)
+                    auto neighbor_it = neighbors_map.find(curr_index);
+                    
+                    if (neighbor_it != neighbors_map.end() && !neighbor_it->second.empty()) {
+                        // 탈출구 발견! 다음 목적지를 옆 섹션으로 강제 변경
+                        const auto& port = neighbor_it->second.front();
+                        next_section_id = port.target_sec->id;
+                        next_start_index = port.target_entry_idx;
+                        
+                        // 중요: next_index도 옆 섹션의 진입점으로 바꿔줘야 할 수 있습니다.
+                        // next_index = next_start_index; 
+                        
+                        can_escape = true;
+                    }
+                }
+
+                // 4. 결단 내리기
+                if (can_escape) {
+                    // 탈출구를 찾았으니, 실패(-1)하지 않고 "이 대기 루프만 부수고 나감"
+                    // 이렇게 해야 밖의 A* / SIPP 알고리즘이 바뀐 next_section_id를 들고 탐색을 이어갑니다.
+                    break; 
+                } else {
+                    // 출구도 아니고 피할 곳도 없으면 그때서야 진짜 쥬금(실패)
+                    if (build_path) { wait_list.clear(); wait_list.push_back(-1); }
+                    return -1;
+                }
             }
+
+            // 위험하지 않다면 정상적으로 대기
             if (build_path) wait_list.push_back(curr_index);
             wait_count_total++;
             curr_time++;
