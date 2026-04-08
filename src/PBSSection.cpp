@@ -422,6 +422,7 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
     int count = 0; // count the times that we call the low-level search.
     unordered_set<int> replan;
     unordered_set<int> already_replanned; 
+    unordered_map<int, int> replan_count;
     if (agent >= 0 && agent < num_of_agents)
         replan.insert(agent);
     find_replan_agents(node, node->conflicts, replan);
@@ -433,14 +434,18 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
         if (count > (int) node->paths.size() * 5)
         {
             runtime_find_consistent_paths += (double)(std::clock() - t) / CLOCKS_PER_SEC;
-            //std::cout << "Here the last>????" << std::endl;
+            // std::cout << "Here the last>????" << std::endl;
         
             return false;
         }
         int a = *replan.begin();
 
         replan.erase(a);
-        already_replanned.insert(a);
+        replan_count[a]++;
+        if (replan_count[a] > 3) {  // 같은 agent 3번 이상 replan → 포기
+            return false;
+        }
+
         count++;
 
         // std::cout << "🔁 [replan 시도] agent=" << a << " count=" << count << "\n";
@@ -450,6 +455,8 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
             // std::cout << "💀 [find_path 실패] agent=" << a << "\n";
             return false;
         }
+
+        //already_replanned.insert(a);
 
         // std::cout << "✅ [find_path 성공] agent=" << a << "\n";
 
@@ -464,8 +471,8 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
 
         find_replan_agents(node, new_conflicts, replan);
 
-        for (int done : already_replanned)
-            replan.erase(done);
+        // for (int done : already_replanned)
+        //     replan.erase(done);
 
         // for (auto& c : new_conflicts) {
         //     std::cout << "   우선순위 체크: (" << c.agent1 << ">" << c.agent2 << ")=" 
@@ -478,7 +485,10 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
         // for (int x : replan) std::cout << x << " ";
         // std::cout << "\n";
 
+
         node->conflicts.splice(node->conflicts.end(), new_conflicts);
+
+       // already_replanned.clear();
     }
     runtime_find_consistent_paths += (double)(std::clock() - t) / CLOCKS_PER_SEC;
     if (screen == 2)
@@ -674,9 +684,19 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
         best_node = dummy_start;
     }
 
+    int hl_iteration = 0;
     // start the loop
 	while (!dfs.empty() && !solution_found)
 	{
+        if (++hl_iteration > 100000) {
+            std::cout << "⏰ [PBS 무한루프] " << hl_iteration << "회 초과\n";
+            std::cout << "   dfs 크기=" << dfs.size() << "\n";
+            std::cout << "   현재 nogood 수=" << nogood.size() << "\n";
+            break;
+        }
+
+
+
 		runtime = (double)(std::clock() - start)  / CLOCKS_PER_SEC;
         if (runtime > time_limit)
 		{  // timeout
@@ -686,6 +706,12 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
 		}
 
 		PBSNodeSection* curr = pop_node();
+
+        if (curr->depth > num_of_agents * 2) {
+            std::cout << "⚠️ [depth 초과] depth=" << curr->depth << " 노드 스킵\n";
+            delete curr;
+            continue;
+        }
 		update_paths(curr);
 
         if (curr->conflicts.empty())
@@ -697,6 +723,10 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
         }
 	
 		choose_conflict(*curr);
+        // std::cout << "🎯 [conflict 선택] a1=" << curr->conflict.agent1 
+        //   << " a2=" << curr->conflict.agent2
+        //   << " t=" << curr->conflict.timestep
+        //   << " depth=" << curr->depth << "\n";
 
         update_best_node(curr);
 
@@ -716,6 +746,13 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
         for (auto & i : n)
         {
             bool sol = generate_child(i, curr, mapsys);
+            // if (sol) {
+            //     std::cout << "✅ [child 생성] depth=" << i->depth 
+            //             << " conflicts=" << i->num_of_collisions << "\n";
+            // } else {
+            //     std::cout << "❌ [child 실패] depth=" << curr->depth + 1 << "\n";
+            // }
+
             if (sol)
             {
                 HL_num_generated++;
