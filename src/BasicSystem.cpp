@@ -690,7 +690,8 @@ void BasicSystem::solve()
 void BasicSystem::solve_by_Section(MapSystem &mapSys)
 {
     
-    
+    //std::cout << "??????" << std::endl;
+
     LRA_called = false;
 	LRAStar lra(G, solver.path_planner);
 	lra.simulation_window = simulation_window;
@@ -718,6 +719,7 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
 
     // solve
     bool sol = solver_section->run_section(start_sections, goal_sections, time_limit, &mapSys);
+    // std::cout << sol << std::endl;
     if (sol)
     {
         if (log)

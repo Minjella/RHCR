@@ -286,6 +286,27 @@ bool PBSSection::find_path(PBSNodeSection* node, int agent, MapSystem* mapsys)
     SectionPath path;
     double path_cost;
 
+    // if (agent == 167) {
+    //     std::cout << "🎯 [goal 167]: ";
+    //     for (auto& [gs, gt] : goal_sections[agent])
+    //         std::cout << "sec=" << gs.section_id 
+    //                   << " goal_idx=" << gs.goal_index 
+    //                   << " t=" << gt << " | ";
+    //     std::cout << "\n";
+    // }
+
+    // std::cout << "📞 [find_path] agent=" << agent 
+    //           << " | depth=" << node->depth << "\n";
+    rs.clear();
+    rs.build(paths, node->priorities.get_reachable_nodes(agent), mapsys);
+    
+    // auto& intervals = rs.get_safe_intervals(3012);
+    // std::cout << "   RS section 3012 구간 수=" << intervals.size() << " | 구간: ";
+    // for (auto& iv : intervals)
+    //     std::cout << "[" << std::get<0>(iv) << "~" << std::get<1>(iv) 
+    //               << " occ=" << std::get<2>(iv) << "] ";
+    // std::cout << "\n";
+
     clock_t t = std::clock();
 	rs.clear();
     rs.build(paths, node->priorities.get_reachable_nodes(agent), mapsys);
@@ -295,6 +316,8 @@ bool PBSSection::find_path(PBSNodeSection* node, int agent, MapSystem* mapsys)
 
     t = std::clock();
     path = section_path_planner->run_section(start_sections[agent], goal_sections[agent], rs, agent, 8, mapsys);
+    // std::cout << "🔙 [run_section 반환] agent=" << agent << " path.size()=" << path.size() << "\n";
+
 	runtime_plan_paths += (double)(std::clock() - t) / CLOCKS_PER_SEC;
     path_cost = section_path_planner->path_cost;
 
@@ -387,6 +410,7 @@ void PBSSection::find_replan_agents(PBSNodeSection* node, const list<SectionConf
             replan.insert(a2);
             continue;
         }
+        // replan.insert(a1);
     }
     runtime_find_replan_agents += (double)(std::clock() - t2) / CLOCKS_PER_SEC;
 }
@@ -397,31 +421,62 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
     clock_t t = clock();
     int count = 0; // count the times that we call the low-level search.
     unordered_set<int> replan;
+    unordered_set<int> already_replanned; 
     if (agent >= 0 && agent < num_of_agents)
         replan.insert(agent);
     find_replan_agents(node, node->conflicts, replan);
+
+    
 
     while (!replan.empty())
     {
         if (count > (int) node->paths.size() * 5)
         {
             runtime_find_consistent_paths += (double)(std::clock() - t) / CLOCKS_PER_SEC;
+            //std::cout << "Here the last>????" << std::endl;
+        
             return false;
         }
         int a = *replan.begin();
+
         replan.erase(a);
+        already_replanned.insert(a);
         count++;
+
+        // std::cout << "🔁 [replan 시도] agent=" << a << " count=" << count << "\n";
 
         if (!find_path(node, a, mapsys))
         {
-            runtime_find_consistent_paths += (double)(std::clock() - t) / CLOCKS_PER_SEC;
+            // std::cout << "💀 [find_path 실패] agent=" << a << "\n";
             return false;
         }
+
+        // std::cout << "✅ [find_path 성공] agent=" << a << "\n";
+
         remove_conflicts(node->conflicts, a);
         list<SectionConflict> new_conflicts;
         find_conflicts(new_conflicts, a);
 
+        // std::cout << "   새 conflict 수=" << new_conflicts.size() << "\n";
+        // for (auto& c : new_conflicts)
+        //     std::cout << "   conflict: a1=" << c.agent1 << " a2=" << c.agent2 
+        //             << " sec=" << c.section_id << " t=" << c.timestep << "\n";
+
         find_replan_agents(node, new_conflicts, replan);
+
+        for (int done : already_replanned)
+            replan.erase(done);
+
+        // for (auto& c : new_conflicts) {
+        //     std::cout << "   우선순위 체크: (" << c.agent1 << ">" << c.agent2 << ")=" 
+        //             << node->priorities.connected(c.agent1, c.agent2)
+        //             << " (" << c.agent2 << ">" << c.agent1 << ")="
+        //             << node->priorities.connected(c.agent2, c.agent1) << "\n";
+        // }
+
+        // std::cout << "   replan 남은 agents: ";
+        // for (int x : replan) std::cout << x << " ";
+        // std::cout << "\n";
 
         node->conflicts.splice(node->conflicts.end(), new_conflicts);
     }

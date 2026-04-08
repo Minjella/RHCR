@@ -107,6 +107,16 @@ void ReservationSection::build(const std::vector<SectionPath*>& paths, const boo
             }
         }
 
+        if (prev_section != -1 && !internal_paths.empty()) {
+            // internal_paths의 가장 마지막 스텝의 시간 + 1 이 에이전트가 최종적으로 멈추거나 사라지는 시간
+            int final_exit_time = internal_paths.back().first + 1; 
+
+            section_timeline[prev_section][final_exit_time] -= 1;
+            if (section_timeline[prev_section][final_exit_time] == 0) {
+                section_timeline[prev_section].erase(final_exit_time);
+            }
+        }
+
         // 마지막 위치에서 계속 대기
         // if (prev_section != -1){
         //     section_timeline[prev_section][MAX_TIME_LIMIT] -= 1;

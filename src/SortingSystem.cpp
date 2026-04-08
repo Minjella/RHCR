@@ -192,11 +192,11 @@ void SortingSystem::simulate(int simulation_time)
 		}
 
 
-		//solve_by_Section(mapSys);
+		solve_by_Section(mapSys);
 		
 		
 
-		solve();
+		//solve();
 		// move drives
 		auto new_finished_tasks = move();
 		std::cout << new_finished_tasks.size() << " tasks has been finished" << std::endl;
