@@ -302,6 +302,18 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                         if (waypoint_node->getFVal() <= focal_bound)
                             waypoint_node->focal_handle = focal_list.push(waypoint_node);
 
+                        if (focal_list.empty() && !open_list.empty()) {
+                            SIPPSectionNode* head = open_list.top();
+                            double new_min_f_val = head->getFVal();
+                            double new_focal_bound = new_min_f_val * suboptimal_bound;
+                            for (SIPPSectionNode* n : open_list) {
+                                if (n->getFVal() <= new_focal_bound)
+                                    n->focal_handle = focal_list.push(n);
+                            }
+                            min_f_val = new_min_f_val;
+                            focal_bound = new_focal_bound;
+                        }
+
                         continue; 
                     }
                 }
