@@ -97,6 +97,22 @@ public:
     void print_conversion_debug(int grid_cols) const;
     ///////////////////////////////////////////
 
+    ///////////// Wall-clock 진단용 (section 모드) /////////////
+    // Phase별 누적 wall-time (std::chrono::steady_clock 기반)
+    double diag_wall_total_sec = 0;          // solve_by_Section 전체
+    double diag_wall_conversion_sec = 0;     // conversion_to_sections
+    double diag_wall_primary_sec = 0;        // solver_section->run_section (성공/실패 무관)
+    double diag_wall_primary_success_sec = 0;// 성공 case만
+    double diag_wall_primary_fail_sec = 0;   // 실패 case만
+    double diag_wall_fallback_sec = 0;       // fallback solver.run (baseline PBS)
+    double diag_wall_update_sec = 0;         // update_paths_section / update_paths + lra
+    double diag_wall_save_sec = 0;           // solver_section->save_results (I/O)
+    int diag_num_calls = 0;
+    int diag_num_primary_success = 0;
+    int diag_num_fallback = 0;
+    void print_diagnostics() const;
+    //////////////////////////////////////////////////////////
+
 protected:
 	bool solve_by_WHCA(vector<Path>& planned_paths,
 		const vector<State>& new_starts, const vector< vector<pair<int, int> > >& new_goal_locations);

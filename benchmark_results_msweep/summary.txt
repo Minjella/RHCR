@@ -1,0 +1,37 @@
+M sweep — w=10 sim_time=5000 sim_window=5
+Total wall time: 1700.7 min
+
+     m |       mode |    n |  throughput |  PBS runtime |     HL exp |    success
+------------------------------------------------------------------------------------------
+   300 |    section |  100 |      9.3041 |      31.96s |      69856 |  100/100
+   400 |    section |  100 |     12.3308 |      56.72s |     126633 |  100/100
+   500 |    section |  100 |     15.3148 |      95.08s |     205869 |  100/100
+   600 |    section |  100 |     18.2355 |     150.66s |     312833 |  100/100
+   700 |    section |  100 |     21.0654 |     235.98s |     458266 |  100/100
+   800 |    section |  100 |     23.7401 |     374.61s |     637994 |  100/100
+   900 |    section |   30 |     26.1832 |     558.67s |     760992 |   30/30
+   300 |   baseline |  100 |      9.3156 |      55.39s |      79409 |  100/100
+   400 |   baseline |  100 |     12.3490 |     116.80s |     141794 |  100/100
+   500 |   baseline |  100 |     15.3281 |     212.95s |     225680 |  100/100
+   600 |   baseline |  100 |     18.2569 |     363.29s |     334741 |  100/100
+   700 |   baseline |  100 |     21.0990 |     596.62s |     474952 |  100/100
+   800 |   baseline |  100 |     23.8143 |     943.19s |     653943 |  100/100
+   900 |   baseline |   30 |     26.3305 |    1500.61s |     883165 |   30/30
+
+=== Section pure vs fallback by m ===
+  m= 300: pure_section=97/100, fallback_events=3
+  m= 400: pure_section=89/100, fallback_events=11
+  m= 500: pure_section=50/100, fallback_events=73
+  m= 600: pure_section=4/100, fallback_events=271
+  m= 700: pure_section=0/100, fallback_events=1106
+  m= 800: pure_section=0/100, fallback_events=5013
+  m= 900: pure_section=0/30, fallback_events=6542
+
+=== Section vs Baseline ratios (per m) ===
+  m= 300: speedup=1.73x, throughput_ratio=0.9988 (section 9.3041 vs baseline 9.3156)
+  m= 400: speedup=2.06x, throughput_ratio=0.9985 (section 12.3308 vs baseline 12.3490)
+  m= 500: speedup=2.24x, throughput_ratio=0.9991 (section 15.3148 vs baseline 15.3281)
+  m= 600: speedup=2.41x, throughput_ratio=0.9988 (section 18.2355 vs baseline 18.2569)
+  m= 700: speedup=2.53x, throughput_ratio=0.9984 (section 21.0654 vs baseline 21.0990)
+  m= 800: speedup=2.52x, throughput_ratio=0.9969 (section 23.7401 vs baseline 23.8143)
+  m= 900: speedup=2.69x, throughput_ratio=0.9944 (section 26.1832 vs baseline 26.3305)

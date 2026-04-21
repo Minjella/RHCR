@@ -1,0 +1,35 @@
+Running 120 simulations, 10 in parallel...
+  sim_time=5000 sim_window=5 plan_window=5
+  M config: [(700, 30), (800, 30)]
+[10/120] section  m= 700 seed=  7   500.8s OK
+[20/120] section  m= 700 seed= 20   404.3s OK
+[30/120] section  m= 700 seed= 30   398.8s OK
+[40/120] baseline m= 700 seed= 10   588.2s OK
+[50/120] baseline m= 700 seed= 20   599.8s OK
+[60/120] baseline m= 700 seed= 30   584.7s OK
+[70/120] section  m= 800 seed=  7   941.3s OK
+[80/120] section  m= 800 seed= 20   876.3s OK
+[90/120] section  m= 800 seed= 30   813.4s OK
+[100/120] baseline m= 800 seed= 11   800.3s OK
+[110/120] baseline m= 800 seed= 20   822.9s OK
+[120/120] baseline m= 800 seed= 30   857.0s OK
+
+All runs done in 8107.6s (135.1 min)
+
+M sweep — w=5 sim_time=5000 sim_window=5
+Total wall time: 135.1 min
+
+     m |       mode |    n |  throughput |  PBS runtime |     HL exp |    success
+------------------------------------------------------------------------------------------
+   700 |    section |   30 |     20.6640 |     186.09s |     292551 |   30/30
+   800 |    section |   30 |     23.2328 |     229.79s |     401474 |   30/30
+   700 |   baseline |   30 |     20.6279 |     455.51s |     310151 |   30/30
+   800 |   baseline |   30 |     23.2066 |     683.54s |     418020 |   30/30
+
+=== Section pure vs fallback by m ===
+  m= 700: pure_section=0/30, fallback_events=392
+  m= 800: pure_section=0/30, fallback_events=1306
+
+=== Section vs Baseline ratios (per m) ===
+  m= 700: speedup=2.45x, throughput_ratio=1.0018 (section 20.6640 vs baseline 20.6279)
+  m= 800: speedup=2.97x, throughput_ratio=1.0011 (section 23.2328 vs baseline 23.2066)

@@ -1,6 +1,8 @@
 #include "BasicSystem.h"
 #include <stdlib.h>
 #include <boost/tokenizer.hpp>
+#include <chrono>
+#include <iomanip>
 #include "Section.h"
 #include "MapSystem.h"
 
@@ -689,55 +691,121 @@ void BasicSystem::solve()
 
 void BasicSystem::solve_by_Section(MapSystem &mapSys)
 {
-    
-    //std::cout << "??????" << std::endl;
+    using clk = std::chrono::steady_clock;
+    auto t_fn_start = clk::now();
+    diag_num_calls++;
 
     LRA_called = false;
 	LRAStar lra(G, solver.path_planner);
 	lra.simulation_window = simulation_window;
 	lra.k_robust = k_robust;
 	solver.clear();
-	
+
     //update_initial_constraints(solver.initial_constraints);
 
+    // [DIAG] conversion_to_sections
+    auto t_conv_start = clk::now();
     conversion_to_sections(mapSys, 0);
-    // std::cout << "Convert to Section (Inside BasicSystem.cpp)" << std::endl;
-    // for(int k=0;k<num_of_drives;k++){
-	// 		std::cout << "agent " << k << std::endl;
+    auto t_conv_end = clk::now();
+    diag_wall_conversion_sec += std::chrono::duration<double>(t_conv_end - t_conv_start).count();
 
-	// 		std::cout << "start section id: [" << mapSys.sections_by_id[start_sections[k].section_id]->grid_x << ", " << mapSys.sections_by_id[start_sections[k].section_id]->grid_y << "] <- (" <<  mapSys.sections_by_id[start_sections[k].section_id]->anchor_x << ", " << mapSys.sections_by_id[start_sections[k].section_id]->anchor_y << ")"<<", index: " << start_sections[k].start_index << std::endl;
-	// 		std::cout << " goal sections: { " << std::endl;
-
-	// 		// goal_locations[k]에 있는 모든 pair를 순회
-	// 		for (const auto& goal : goal_sections[k]) 
-	// 		{
-	// 			std::cout << "section id: [" << mapSys.sections_by_id[goal.first.section_id]->grid_x << ", " << mapSys.sections_by_id[goal.first.section_id]->grid_y << "] <- (" <<  mapSys.sections_by_id[goal.first.section_id]->anchor_x << ", " << mapSys.sections_by_id[goal.first.section_id]->anchor_y << ")"<<", index: " << goal.first.goal_index << std::endl;
-	// 		}
-	// 		std::cout << "}"<< std::endl;
-
-	// 	}
-
-    // solve
+    // [DIAG] primary solver_section->run_section
+    auto t_pri_start = clk::now();
     bool sol = solver_section->run_section(start_sections, goal_sections, time_limit, &mapSys);
-    // std::cout << sol << std::endl;
+    auto t_pri_end = clk::now();
+    double pri_sec = std::chrono::duration<double>(t_pri_end - t_pri_start).count();
+    diag_wall_primary_sec += pri_sec;
+
     if (sol)
     {
+        diag_wall_primary_success_sec += pri_sec;
+        diag_num_primary_success++;
+
         if (log)
             solver_section->save_constraints_in_goal_node(outfile + "/goal_nodes_section/" + std::to_string(timestep) + ".gv");
+        // [DIAG] update_paths_section
+        auto t_upd_start = clk::now();
         update_paths_section(solver_section->section_solution, &mapSys, INT_MAX);
+        auto t_upd_end = clk::now();
+        diag_wall_update_sec += std::chrono::duration<double>(t_upd_end - t_upd_start).count();
     }
     else
     {
-        bool sol = solver.run(starts, goal_locations, time_limit);
+        diag_wall_primary_fail_sec += pri_sec;
+        diag_num_fallback++;
+
+        // [DIAG] fallback baseline PBS
+        auto t_fb_start = clk::now();
+        bool sol2 = solver.run(starts, goal_locations, time_limit);
+        auto t_fb_end = clk::now();
+        diag_wall_fallback_sec += std::chrono::duration<double>(t_fb_end - t_fb_start).count();
+        (void)sol2; // 사용되지 않는 sol2 경고 억제 (로컬에서 재바인딩만 의도)
+
+        // [DIAG] lra.resolve_conflicts + update_paths
+        auto t_upd_start = clk::now();
         lra.resolve_conflicts(solver.solution);
         update_paths(lra.solution);
+        auto t_upd_end = clk::now();
+        diag_wall_update_sec += std::chrono::duration<double>(t_upd_end - t_upd_start).count();
     }
 
     if (log)
         solver_section->save_search_tree(outfile + "/search_trees_section/" + std::to_string(timestep) + ".gv");
 
-	 solver_section->save_results(outfile + "/solver_section.csv", std::to_string(timestep) + "," 
+    // [DIAG] save_results (I/O)
+    auto t_save_start = clk::now();
+	 solver_section->save_results(outfile + "/solver_section.csv", std::to_string(timestep) + ","
 										+ std::to_string(num_of_drives) + "," + std::to_string(seed));
+    auto t_save_end = clk::now();
+    diag_wall_save_sec += std::chrono::duration<double>(t_save_end - t_save_start).count();
+
+    auto t_fn_end = clk::now();
+    diag_wall_total_sec += std::chrono::duration<double>(t_fn_end - t_fn_start).count();
+}
+
+void BasicSystem::print_diagnostics() const
+{
+    if (diag_num_calls == 0) {
+        // section 모드가 한 번도 돌지 않음 (baseline-only 실행) → 스킵
+        return;
+    }
+    double accounted = diag_wall_conversion_sec + diag_wall_primary_sec
+                     + diag_wall_fallback_sec + diag_wall_update_sec
+                     + diag_wall_save_sec;
+    double unaccounted = diag_wall_total_sec - accounted;
+    double pri_succ_mean = (diag_num_primary_success > 0)
+        ? diag_wall_primary_success_sec / diag_num_primary_success : 0.0;
+    double pri_fail_mean = (diag_num_fallback > 0)
+        ? diag_wall_primary_fail_sec / diag_num_fallback : 0.0;
+    double fb_mean = (diag_num_fallback > 0)
+        ? diag_wall_fallback_sec / diag_num_fallback : 0.0;
+
+    std::cout << "\n[DIAG] ===== SECTION-MODE WALL-CLOCK BREAKDOWN =====\n";
+    std::cout << std::fixed << std::setprecision(3);
+    std::cout << "[DIAG] total calls:              " << diag_num_calls << "\n";
+    std::cout << "[DIAG] primary success:          " << diag_num_primary_success
+              << " (" << (100.0 * diag_num_primary_success / diag_num_calls) << " %)\n";
+    std::cout << "[DIAG] fallback invocations:     " << diag_num_fallback
+              << " (" << (100.0 * diag_num_fallback / diag_num_calls) << " %)\n";
+    std::cout << "[DIAG]\n";
+    std::cout << "[DIAG] TOTAL solve_by_Section:   " << diag_wall_total_sec << " s (wall)\n";
+    std::cout << "[DIAG]   conversion_to_sections: " << diag_wall_conversion_sec
+              << " s (" << (100.0 * diag_wall_conversion_sec / diag_wall_total_sec) << " %)\n";
+    std::cout << "[DIAG]   primary run_section:    " << diag_wall_primary_sec
+              << " s (" << (100.0 * diag_wall_primary_sec / diag_wall_total_sec) << " %)\n";
+    std::cout << "[DIAG]     success subtotal:     " << diag_wall_primary_success_sec
+              << " s, mean/call=" << pri_succ_mean << " s\n";
+    std::cout << "[DIAG]     failure subtotal:     " << diag_wall_primary_fail_sec
+              << " s, mean/call=" << pri_fail_mean << " s\n";
+    std::cout << "[DIAG]   fallback baseline PBS:  " << diag_wall_fallback_sec
+              << " s (" << (100.0 * diag_wall_fallback_sec / diag_wall_total_sec) << " %), mean/call=" << fb_mean << " s\n";
+    std::cout << "[DIAG]   update paths:           " << diag_wall_update_sec
+              << " s (" << (100.0 * diag_wall_update_sec / diag_wall_total_sec) << " %)\n";
+    std::cout << "[DIAG]   save_results I/O:       " << diag_wall_save_sec
+              << " s (" << (100.0 * diag_wall_save_sec / diag_wall_total_sec) << " %)\n";
+    std::cout << "[DIAG]   unaccounted:            " << unaccounted
+              << " s (" << (100.0 * unaccounted / diag_wall_total_sec) << " %)\n";
+    std::cout << "[DIAG] =============================================\n" << std::flush;
 }
 
 bool BasicSystem::solve_by_WHCA(vector<Path>& planned_paths,
@@ -1000,56 +1068,39 @@ void BasicSystem::print_conversion_debug(int grid_cols) const
 
 void BasicSystem::update_paths_section(const std::vector<SectionPath>& MAPF_paths,MapSystem* mapsys, int max_timestep = INT_MAX )
 {
-    std::vector<int> dx = {0, 1, 2, 0, 1, 2, 0, 1, 2};
-    std::vector<int> dy = {2, 2, 2, 1, 1, 1, 0, 0, 0};
-    
-    //std::cout << "dododod?" << std::endl;
+    // 3x3 section cell offset. (compile-time constant 배열로 stack에 둠)
+    static constexpr int dx[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
+    static constexpr int dy[9] = {2, 2, 2, 1, 1, 1, 0, 0, 0};
+    const int cols = G.cols;
 
     for (int k = 0; k < num_of_drives; k++)
     {
         if (MAPF_paths[k].empty()) continue;
 
         const auto& sec_path = MAPF_paths[k];
+        const int agent_max_time = sec_path.back().timestep;
+        const int length = std::min(max_timestep, agent_max_time + 1);
 
-        // 1. 이 에이전트 경로의 총 길이를 알아냅니다.
-        // 마지막 섹션의 마지막 full_path 요소의 시간이 최종 도착 시간입니다.
-        int agent_max_time = 0;
-        agent_max_time = sec_path.back().timestep;
+        paths[k].resize(timestep + length);
 
-        //std::cout << "agent max time " << agent_max_time << std::endl;
-
-        // max_timestep 제한을 걸어줍니다. (+1은 0초부터 시작하므로 개수 맞춤)
-        int length = min(max_timestep, agent_max_time + 1);
-        
-        // 현재 전역 시간(timestep)에 새로운 경로 길이를 더해 공간을 확보합니다.
-        paths[k].resize(timestep + length); 
-
-        // 2. SectionPath를 순회하며 1초 단위로 쪼개서 넣습니다.
+        // SectionPath를 순회 — 각 state마다 섹션 포인터 한 번 조회.
         for (const auto& state : sec_path)
         {
-            //std::cout << "agent " <<  k << ", section id: " << state.section_id << ", full_size: " << state.full_path.size() << std::endl;
+            auto* sec = mapsys->sections_by_id[state.section_id];
+            const int anchor_x = sec->anchor_x;
+            const int anchor_y = sec->anchor_y;
+
             for (const auto& step : state.full_path)
             {
-                //std::cout << "      time: " << step.first << ", index" << step.second << std::endl;
-                int t = step.first;       // 해당 위치에 도달하는 시간
-                int index = step.second; // 해당 위치 (cell_index)
-                int x = mapsys->sections_by_id[state.section_id]->anchor_x + dx[index];
-                int y = mapsys->sections_by_id[state.section_id]->anchor_y + dy[index];
-                int location = x*G.cols + y;
-                
+                const int t = step.first;
+                if (t >= length) break;
+                const int index = step.second;
+                const int location = (anchor_x + dx[index]) * cols + (anchor_y + dy[index]);
 
-                if (t >= length) break; // max_timestep을 넘어가면 중단
-
-                // BasicSystem의 State 구조체에 맞게 값을 넣어줍니다.
-                // (만약 State 안에 다른 변수명으로 되어 있다면 그에 맞게 수정해주세요 ex: cell_id 등)
-                paths[k][timestep + t].location = location; 
-                paths[k][timestep + t].timestep = timestep + t;
-                //std::cout << t << std::endl;
+                auto& slot = paths[k][timestep + t];
+                slot.location = location;
+                slot.timestep = timestep + t;
             }
         }
-
-        
-        
     }
-    //std::cout << paths[0].size() << std::endl;
 }

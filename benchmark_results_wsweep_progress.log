@@ -1,0 +1,64 @@
+Running 800 simulations, 10 in parallel...
+  agents=500 sim_time=5000 sim_window=5 w_values=[5, 10, 20, 100]
+[20/800] section  w=  5 seed= 20  150.4s OK
+[40/800] section  w=  5 seed= 37  154.1s OK
+[60/800] section  w=  5 seed= 60  150.6s OK
+[80/800] section  w=  5 seed= 80  147.7s OK
+[100/800] section  w=  5 seed=100  147.3s OK
+[120/800] baseline w=  5 seed= 20  222.2s OK
+[140/800] baseline w=  5 seed= 40  221.7s OK
+[160/800] baseline w=  5 seed= 60  224.0s OK
+[180/800] baseline w=  5 seed= 80  220.4s OK
+[200/800] baseline w=  5 seed=100  240.9s OK
+[220/800] section  w= 10 seed= 20  156.2s OK
+[240/800] section  w= 10 seed= 38  181.5s OK
+[260/800] section  w= 10 seed= 60  177.0s OK
+[280/800] section  w= 10 seed= 80  172.4s OK
+[300/800] section  w= 10 seed=100  153.6s OK
+[320/800] baseline w= 10 seed= 20  263.1s OK
+[340/800] baseline w= 10 seed= 40  281.8s OK
+[360/800] baseline w= 10 seed= 60  271.3s OK
+[380/800] baseline w= 10 seed= 80  272.8s OK
+[400/800] baseline w= 10 seed= 99  307.5s OK
+[420/800] section  w= 20 seed= 20  237.6s OK
+[440/800] section  w= 20 seed= 40  199.0s OK
+[460/800] section  w= 20 seed= 59  240.3s OK
+[480/800] section  w= 20 seed= 79  237.4s OK
+[500/800] section  w= 20 seed= 99  210.7s OK
+[520/800] baseline w= 20 seed= 20  405.4s OK
+[540/800] baseline w= 20 seed= 40  357.8s OK
+[560/800] baseline w= 20 seed= 60  360.0s OK
+[580/800] baseline w= 20 seed= 80  364.7s OK
+[600/800] section  w=100 seed=  1  258.9s OK
+[620/800] section  w=100 seed= 21  270.5s OK
+[640/800] section  w=100 seed= 41  261.5s OK
+[660/800] section  w=100 seed= 60  322.9s OK
+[680/800] section  w=100 seed= 80  295.6s OK
+[700/800] section  w=100 seed=100  298.1s OK
+[720/800] baseline w=100 seed= 20  458.0s OK
+[740/800] baseline w=100 seed= 40  463.5s OK
+[760/800] baseline w=100 seed= 60  446.9s OK
+[780/800] baseline w=100 seed= 79  544.8s OK
+[800/800] baseline w=100 seed=100  470.8s OK
+
+All runs done in 21705.5s (361.8 min)
+
+W sweep benchmark — m=500 sim_time=5000 sim_window=5 100 seeds
+Total wall time: 361.8 min
+
+     w |       mode |  throughput |  PBS runtime |     HL exp |  success
+--------------------------------------------------------------------------------
+     5 |    section |     15.1123 |      82.30s |     135295 |  100/100
+    10 |    section |     15.3148 |      95.54s |     205869 |  100/100
+    20 |    section |     15.3532 |     137.54s |     318722 |  100/100
+   100 |    section |     15.3557 |     191.29s |     397653 |  100/100
+     5 |   baseline |     15.0982 |     166.27s |     150507 |  100/100
+    10 |   baseline |     15.3281 |     212.46s |     225680 |  100/100
+    20 |   baseline |     15.3744 |     303.76s |     329080 |  100/100
+   100 |   baseline |     15.3781 |     390.60s |     398590 |  100/100
+
+=== Section vs Baseline ratios (per w) ===
+  w=  5: speedup=2.02x, throughput_ratio=1.0009 (section 15.1123 vs baseline 15.0982)
+  w= 10: speedup=2.22x, throughput_ratio=0.9991 (section 15.3148 vs baseline 15.3281)
+  w= 20: speedup=2.21x, throughput_ratio=0.9986 (section 15.3532 vs baseline 15.3744)
+  w=100: speedup=2.04x, throughput_ratio=0.9985 (section 15.3557 vs baseline 15.3781)

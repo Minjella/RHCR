@@ -63,8 +63,6 @@ inline uint32_t ReservationSection::make_cell_key(int time, int section_id, int 
 void ReservationSection::build(const std::vector<SectionPath*>& paths, const boost::unordered_set<int>& high_priority_agents , MapSystem* MapSys)
 {
     clear();
-    vector<pair<int, int>> internal_paths = {};
-    internal_paths.reserve(100);
 
     for (int agent_id: high_priority_agents)
     {
@@ -73,28 +71,22 @@ void ReservationSection::build(const std::vector<SectionPath*>& paths, const boo
         const auto& path = *paths[agent_id];
 
         int prev_section = -1;
-        // int enter_time = -1;
+        int last_final_time = -1; // 마지막 상태의 full_path 마지막 시간 (exit 시점 -1)
 
         for (size_t i = 0; i < path.size(); ++i)
         {
-            const auto&state = path[i];
-            
-            // list(time, cell index)
-            // full_path로 대체 가능
-            //vector<pair<int, int>> internal_paths = MapSys->sections_by_id[state.section_id]->get_internal_path(state.timestep, state.start_index, state.exit_index, state.wait_list);
-            internal_paths.clear();
-            internal_paths = state.full_path;
-
+            const auto& state = path[i];
+            const auto& internal_paths = state.full_path; // copy 제거: reference 사용
 
             // Cell Table Update
-            for (auto step: internal_paths){
+            for (const auto& step : internal_paths) {
                 cell_table[make_cell_key(step.first, state.section_id, step.second)] = agent_id;
             }
 
             // Section Timeline update
-            if (state.section_id != prev_section){
+            if (state.section_id != prev_section) {
                 // 이전 section에서 빠져나옴
-                if (prev_section != -1){
+                if (prev_section != -1) {
                     section_timeline[prev_section][state.timestep] -= 1;
                     if (section_timeline[prev_section][state.timestep] == 0) {
                         section_timeline[prev_section].erase(state.timestep);
@@ -105,25 +97,20 @@ void ReservationSection::build(const std::vector<SectionPath*>& paths, const boo
 
                 prev_section = state.section_id;
             }
+
+            if (!internal_paths.empty())
+                last_final_time = internal_paths.back().first;
         }
 
-        if (prev_section != -1 && !internal_paths.empty()) {
-            // internal_paths의 가장 마지막 스텝의 시간 + 1 이 에이전트가 최종적으로 멈추거나 사라지는 시간
-            int final_exit_time = internal_paths.back().first + 1; 
+        if (prev_section != -1 && last_final_time >= 0) {
+            // 에이전트가 최종적으로 멈추거나 사라지는 시간 = 마지막 step의 시간 + 1
+            int final_exit_time = last_final_time + 1;
 
             section_timeline[prev_section][final_exit_time] -= 1;
             if (section_timeline[prev_section][final_exit_time] == 0) {
                 section_timeline[prev_section].erase(final_exit_time);
             }
         }
-
-        // 마지막 위치에서 계속 대기
-        // if (prev_section != -1){
-        //     section_timeline[prev_section][MAX_TIME_LIMIT] -= 1;
-        //     if (section_timeline[prev_section][MAX_TIME_LIMIT] == 0) {
-        //         section_timeline[prev_section].erase(MAX_TIME_LIMIT);
-        //     }
-        // }
     }
 }
 

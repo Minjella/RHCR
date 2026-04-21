@@ -40,8 +40,8 @@ SectionPath SIPPSection::updatePath(const SIPPSectionNode* goal, ReservationSect
             int dummy_next_start = next_node->s_state.start_index;
             int circle_flag = -1;
 
-            find_wait_list(state_copy.section_id, state_copy.start_index, state_copy.exit_index, 
-                           state_copy.timestep, rs, MapSys, dummy_next_sec, dummy_next_start, 
+            find_wait_list(state_copy.section_id, state_copy.start_index, state_copy.exit_index,
+                           state_copy.timestep, rs, MapSys, dummy_next_sec, dummy_next_start,
                            temp_wait, temp_path, circle_flag, true); // true: 경로 조립
 
             int total_extra_wait = next_node->wait_at_exit + next_node->wait_at_goal;
@@ -51,10 +51,34 @@ SectionPath SIPPSection::updatePath(const SIPPSectionNode* goal, ReservationSect
                 temp_path.push_back({last_time + 1, state_copy.exit_index});
             }
 
+            // Same-section transition (pivot) bridge: A*의 find_wait_list는 다음 섹션
+            // 입구가 막혀 있을 때 exit 셀에서 기다리다 pivot을 시도하며, 그 대기만큼
+            // cost에 포함시킨다. updatePath가 같은 섹션으로 재호출되면 end-while이
+            // 스킵되어 이 대기가 temp_path에서 누락되고 paths[k]에 시간 구멍이 생긴다.
+            // next_node.timestep - 1까지 exit 셀에서 대기한 것으로 보충한다.
+            if (next_node->s_state.section_id == state_copy.section_id &&
+                next_node->s_state.start_index != state_copy.start_index) {
+                int target_last_time = next_node->s_state.timestep - 1;
+                int current_last_time = temp_path.empty()
+                                            ? state_copy.timestep - 1
+                                            : temp_path.back().first;
+                while (current_last_time < target_last_time) {
+                    current_last_time++;
+                    temp_path.push_back({current_last_time, state_copy.exit_index});
+                    temp_wait.push_back(state_copy.exit_index);
+                }
+            }
+
             state_copy.wait_list = temp_wait;
             state_copy.full_path = temp_path;
         } else {
             state_copy.exit_index = state_copy.goal_index;
+            // 최종 goal 셀에 대한 엔트리를 채워야 update_paths_section이
+            // paths[k][timestep + final.timestep]을 실제로 쓴다. 비워두면
+            // 그 인덱스가 default State(-1,-1,-1)로 남아 jump 검증에서 실패.
+            if (state_copy.full_path.empty()) {
+                state_copy.full_path.push_back({state_copy.timestep, state_copy.start_index});
+            }
         }
 
         path.push_back(state_copy);
@@ -150,42 +174,6 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
         open_list.erase(curr->open_handle);
         curr->in_openlist = false;
         num_expanded++;
-
-        // if (curr->s_state.section_id == 3019) {
-        //     std::cout << "🔍 [3019 이웃] ";
-        //     for (const auto& [exit_idx, conns] : MapSys->sections_by_id[3019]->neighbors)
-        //         for (const auto& port : conns)
-        //             std::cout << "exit=" << exit_idx << "→sec=" << port.target_sec->id << " ";
-        //     std::cout << "\n";
-        // }
-
-    
-
-        if (curr->s_state.section_id == 3019) {
-            const auto& neighbors_map = MapSys->sections_by_id[curr->s_state.section_id]->neighbors;
-            for (const auto& [exit_idx, conns] : neighbors_map) {
-                for (const auto& port : conns) {
-                    int nid = port.target_sec->id;
-                    int nentry = port.target_entry_idx;
-                    double h = MapSys->compute_h_value(nid, nentry, curr->goal_id, goal_sections, goal_to_goal);
-                    int icost = find_wait_list(curr->s_state.section_id, curr->s_state.start_index,
-                                            exit_idx, curr->s_state.timestep, rs, MapSys,
-                                            nid, nentry, cached_wait_list, cached_full_path, -1);
-                    // std::cout << "  exit=" << exit_idx << "→sec=" << nid 
-                    //         << " h=" << h 
-                    //         << " internal_cost=" << icost << "\n";
-                    
-                    // safe_intervals 확인
-                    const auto& sivs = rs.get_safe_intervals(nid);
-                    // for (auto& iv : sivs)
-                    //     std::cout << "    interval=[" << std::get<0>(iv) << "~" << std::get<1>(iv)
-                    //             << " occ=" << std::get<2>(iv) << "]\n";
-                }
-            }
-        }
-
-        
-        
 
         const SectionState& current_goal_state = goal_sections[curr->goal_id].first;
         int current_goal_time = goal_sections[curr->goal_id].second;
@@ -340,22 +328,18 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                 int internal_cost = find_wait_list(curr->s_state.section_id, curr->s_state.start_index, curr_exit_index, curr->s_state.timestep, rs, MapSys, next_section_id, next_start_index, cached_wait_list, cached_full_path, circle_flag);
 
                 if (internal_cost == -1) {
-                    // 1번 후보: 내부 경로를 못 찾음
-                    // std::cout << "  [Debug] Section " << curr->s_state.section_id << " Exit " << curr_exit_index << " 방향: 내부 경로 차단됨" << std::endl;
                     continue;
                 }
                 double total_travel_cost = internal_cost + edge_cost;
 
                 int arrival_time = curr->s_state.timestep + total_travel_cost;
                 double next_h_val = MapSys->compute_h_value(next_section_id, next_start_index, curr->goal_id, goal_sections, goal_to_goal);
-                if (next_h_val >= 999999) { // 대충 무한대 체크
-                    // if (curr->s_state.section_id == 3012) std::cout << "   ❌ [H-value 무한대] 섹션 " << next_section_id << "로 가면 목적지에 못 갑니다!\n";
+                if (next_h_val >= 999999) { // 도달 불가 휴리스틱 가지치기
                     continue;
                 }
 
                 const auto& safe_intervals = rs.get_safe_intervals(next_section_id);
                 if (safe_intervals.empty()) {
-                    // if (curr->s_state.section_id == 3012) std::cout << "   ❌ [구간 없음] 섹션 " << next_section_id << "의 예약 장부가 텅 비어있음(오류)!\n";
                     continue;
                 }
                 bool found_interval = false;
@@ -364,10 +348,8 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                     
                     int section_congestion = std::get<2>(interval);
                     if (section_congestion >= MapSys->sections_by_id[next_section_id]->info->capacity){
-                        // 2번 후보: 수용량 초과로 진입 거부
-                        // std::cout << "  [Debug] Section " << next_section_id << " 방향: 수용량 초과(" << section_congestion << ")" << std::endl;
-                        continue; 
-                    } 
+                        continue;
+                    }
                     if (std::get<1>(interval) <= arrival_time) {
                         found_interval = true;
                         continue;
@@ -476,8 +458,6 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
 
     releaseClosedListNodes();
     open_list.clear(); focal_list.clear();
-
-    // std::cout << "[SIPP Fail] Agent " << agent_id << " - Open List 고갈. 생성된 노드 수: " << num_generated << ", 확장된 노드 수: " << num_expanded << std::endl;
 
     return SectionPath();
 }
@@ -625,10 +605,10 @@ inline void SIPPSection::releaseClosedListNodes()
 
 
 
-int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep, 
-                                const ReservationSection& rs, MapSystem* MapSys, 
-                                int& next_section_id, int& next_start_index, 
-                                std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path, 
+int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index, int timestep,
+                                const ReservationSection& rs, MapSystem* MapSys,
+                                int& next_section_id, int& next_start_index,
+                                std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path,
                                 int circle_flag, bool build_path)
 {
     if (build_path) {
@@ -636,175 +616,154 @@ int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index,
         full_path.clear();
     }
 
-    const vector<int>& static_path = MapSys->sections_by_id[section_id]->info->path_table[start_index][exit_index];
+    // 한 번만 dereference — hot path에서 섹션 포인터 해시 조회 줄이기.
+    auto* sec_info = MapSys->sections_by_id[section_id]->info;
+    const vector<int>& static_path = sec_info->path_table[start_index][exit_index];
     if (static_path.empty()) {
-        //std::cout << "🚨 [경로 붕괴] Section " << section_id <<" Type " << (int)MapSys->sections_by_id[section_id]->info->type << " 내부 길찾기 불가! (Index " << start_index << " -> " << exit_index << " 경로가 Map 데이터에 없음)\n";
         if (build_path) wait_list.push_back(-1);
         return -1;
-    } 
+    }
 
-    int best_delay = -1;
-    int max_delay = 100; // 출발 전 눈치 보기 최대 30턴
+    const int path_len     = (int)static_path.size();
+    const int exit_idx_cell = static_path.back();
+    const int came_from    = (path_len >= 2) ? static_path[path_len - 2] : -1;
+    const int original_next_section = next_section_id;
+    const int original_next_start   = next_start_index;
+
+    // max_delay: 시작 셀의 safe-interval horizon에서 유도 (cap 500).
+    // get_safe_intervals는 lazy cache라 non-const → 읽기 전용 const_cast.
+    int max_delay = 500;
+    {
+        auto& rs_mut = const_cast<ReservationSection&>(rs);
+        const auto& sivs = rs_mut.get_safe_intervals(section_id);
+        for (const auto& iv : sivs) {
+            if (std::get<0>(iv) <= timestep && std::get<1>(iv) > timestep) {
+                int horizon = std::get<1>(iv) - timestep;
+                if (horizon < max_delay) max_delay = horizon;
+                break;
+            }
+        }
+        if (max_delay < 1) max_delay = 1;
+    }
+
+    // 빌드 모드일 때만 출력 벡터를 미리 reserve — 매 iteration 재할당 방지.
+    if (build_path) {
+        wait_list.reserve(path_len + 16);
+        full_path.reserve(path_len + 16);
+    }
+
+    int best_delay       = -1;
     int wait_count_total = 0;
-    
-    int actual_next_sec = next_section_id;
-    int actual_next_start = next_start_index;
-    std::vector<int> actual_path;
-    bool escaped = false;
+    int final_next_sec   = original_next_section;
+    int final_next_start = original_next_start;
 
-    // ✨ 핵심: 밖에서 하던 '기다렸다 출발하기'를 안에서 시뮬레이션
     for (int delay = 0; delay <= max_delay; ++delay) {
-        int test_time = timestep + delay;
-        
-        // delay만큼 시작점에서 버틸 수 있는지 검증
+        // 시작점에서 delay만큼 대기할 수 있는지 검증.
         bool safe_to_delay = true;
         for (int w = 1; w <= delay; ++w) {
             if (!rs.is_cell_safe(timestep + w, section_id, start_index)) {
                 safe_to_delay = false; break;
             }
         }
-        if (!safe_to_delay) break; // 내 자리가 뺏기면 더는 못 기다림
+        if (!safe_to_delay) break;
 
         int temp_wait_total = delay;
-        int temp_curr_time = test_time;
-        bool local_fail = false;
-        escaped = false;
-        actual_next_sec = next_section_id; 
-        actual_next_start = next_start_index;
+        int temp_curr_time  = timestep + delay;
+        bool local_fail     = false;
+        int iter_next_sec   = original_next_section;
+        int iter_next_start = original_next_start;
 
-        for (size_t i = 0; i < static_path.size() - 1; ++i) {
+        // 빌드 모드: 직접 출력 벡터에 쓰기. 실패 시 아래에서 clear().
+        if (build_path) {
+            wait_list.clear();
+            full_path.clear();
+            full_path.push_back({timestep, start_index});
+            for (int k = 1; k <= delay; ++k) {
+                wait_list.push_back(start_index);
+                full_path.push_back({timestep + k, start_index});
+            }
+        }
+
+        // 섹션 내부 경로 순회.
+        for (int i = 0; i < path_len - 1; ++i) {
             int curr_idx = static_path[i];
             int next_idx = static_path[i + 1];
 
             while (!rs.is_cell_safe(temp_curr_time + 1, section_id, next_idx)) {
                 if (!rs.is_cell_safe(temp_curr_time + 1, section_id, curr_idx)) {
-                    bool can_escape = false;
-                    auto exits = MapSys->sections_by_id[section_id]->info->exits;
-                    if (std::find(exits.begin(), exits.end(), curr_idx) != exits.end()) {
-                        const auto& n_map = MapSys->sections_by_id[section_id]->neighbors;
-                        auto it = n_map.find(curr_idx);
-                        if (it != n_map.end() && !it->second.empty()) {
-                            const auto& port = it->second.front();
-                            // ✨ 세그폴트 방어: target_sec 널포인터 체크 추가
-                            if (port.target_sec != nullptr && rs.is_cell_safe(temp_curr_time + 1, port.target_sec->id, port.target_entry_idx)) {
-                                actual_next_sec = port.target_sec->id;
-                                actual_next_start = port.target_entry_idx;
-                                can_escape = true;
-                            }
-                        }
-                    }
-                    if (can_escape) {
-                        escaped = true; break;
-                    } else {
-                        local_fail = true; break;
-                    }
+                    // 현재 칸도 막혀 있으면 이 경로는 포기 — A*가 다른 출구를
+                    // 시도하게 둔다.
+                    local_fail = true;
+                    break;
                 }
+                // curr_idx에서 대기.
                 temp_wait_total++;
                 temp_curr_time++;
+                if (build_path) {
+                    wait_list.push_back(curr_idx);
+                    full_path.push_back({temp_curr_time, curr_idx});
+                }
             }
             if (local_fail) break;
-            if (escaped) {
-                actual_path.assign(static_path.begin(), static_path.begin() + i + 1);
-                break;
-            }
+            // curr_idx → next_idx 이동 (1 타임스텝).
             temp_curr_time++;
+            if (build_path) {
+                full_path.push_back({temp_curr_time, next_idx});
+            }
         }
 
-        if (local_fail) continue; 
+        if (local_fail) continue;
 
-        // 목적지 입구 대기열 검증
-        if (!escaped && section_id != actual_next_sec) {
-            int exit_idx = static_path.back();
-            auto sec_type = MapSys->sections_by_id[section_id]->info->type;
-            bool is_special = (sec_type == SectionType::Eject_CCW || sec_type == SectionType::Eject_CW ||
-                               sec_type == SectionType::Induct_C_BOTTOM || sec_type == SectionType::Induct_C_TOP);
-            
-            while (!rs.is_cell_safe(temp_curr_time + 1, actual_next_sec, actual_next_start)) {
-                if (!rs.is_cell_safe(temp_curr_time + 1, section_id, exit_idx)) {
+        // 목적지 입구 대기열 검증 — 다음 섹션 입구가 열릴 때까지 exit 셀에서 대기.
+        // 막히면 같은 섹션 내 adj 후보로 pivot.
+        if (section_id != iter_next_sec) {
+            while (!rs.is_cell_safe(temp_curr_time + 1, iter_next_sec, iter_next_start)) {
+                if (!rs.is_cell_safe(temp_curr_time + 1, section_id, exit_idx_cell)) {
                     bool loop_found = false;
-                    if (is_special && !MapSys->sections_by_id[section_id]->info->adj[exit_idx].empty()) {
-                        int loop_start = MapSys->sections_by_id[section_id]->info->adj[exit_idx].front();
-                        if (rs.is_cell_safe(temp_curr_time + 1, section_id, loop_start)) {
-                            actual_next_sec = section_id;
-                            actual_next_start = loop_start;
+                    const auto& adj_list = sec_info->adj[exit_idx_cell];
+                    for (int cand : adj_list) {
+                        if (cand == came_from) continue;
+                        if (rs.is_cell_safe(temp_curr_time + 1, section_id, cand)) {
+                            iter_next_sec   = section_id;
+                            iter_next_start = cand;
                             loop_found = true;
+                            break;
                         }
                     }
                     if (!loop_found) { local_fail = true; break; }
-                    else { break; }
+                    else             { break; }
                 }
                 temp_wait_total++;
                 temp_curr_time++;
+                if (build_path) {
+                    wait_list.push_back(exit_idx_cell);
+                    full_path.push_back({temp_curr_time, exit_idx_cell});
+                }
             }
             if (local_fail) continue;
         }
 
-        // 모든 역경을 뚫고 성공했다면 기록!
-        best_delay = delay;
+        // 성공!
+        best_delay       = delay;
         wait_count_total = temp_wait_total;
-        if (!escaped) actual_path = static_path;
-        break; 
+        final_next_sec   = iter_next_sec;
+        final_next_start = iter_next_start;
+        break;
     }
 
     if (best_delay == -1) {
-        // ✨ [X-Ray 2] 샌드위치 껴서 데드락 났는지 확인
-        // std::cout << "🚨 [샌드위치 데드락] Section " << section_id << " (Index " << start_index << " -> Exit " << exit_index << ", 출발 Time: " << timestep << ")\n";
-        // std::cout << "   -> 원인: 100턴(max_delay)을 다 기다려봐도, (1)앞이 영원히 막혀있거나 (2)기다리는 동안 뒤차가 내 자리를 덮치는 시나리오밖에 없음.\n";
-
-
-        if (build_path) wait_list.push_back(-1);
+        if (build_path) {
+            wait_list.clear();
+            full_path.clear();
+            wait_list.push_back(-1);
+        }
         return -1;
     }
 
-    // A* 에 넘겨줄 진짜 목적지로 업데이트
-    next_section_id = actual_next_sec;
-    next_start_index = actual_next_start;
+    // A*에 넘겨줄 실제 목적지 (pivot되었을 수 있음).
+    next_section_id  = final_next_sec;
+    next_start_index = final_next_start;
 
-    // ✨ PBS 예약용 경로 생성 (타임라인 끊김 방지)
-    if (build_path) {
-        for (int k = 0; k < best_delay; ++k) {
-            wait_list.push_back(start_index);
-        }
-        
-        int temp_time = timestep + best_delay;
-        for (size_t i = 0; i < actual_path.size() - 1; ++i) {
-            int c_idx = actual_path[i];
-            int n_idx = actual_path[i + 1];
-            while (!rs.is_cell_safe(temp_time + 1, section_id, n_idx)) {
-                if (!rs.is_cell_safe(temp_time + 1, section_id, c_idx)) break; 
-                wait_list.push_back(c_idx);
-                temp_time++;
-            }
-            temp_time++;
-        }
-        
-        if (!escaped && section_id != next_section_id) {
-            int last_idx = actual_path.back();
-            while (!rs.is_cell_safe(temp_time + 1, next_section_id, next_start_index)) {
-                if (!rs.is_cell_safe(temp_time + 1, section_id, last_idx)) break;
-                wait_list.push_back(last_idx);
-                temp_time++;
-            }
-        }
-
-        std::unordered_map<int, int> wait_counts;
-        for(int node : wait_list) wait_counts[node]++;
-
-        int current_time = timestep;
-        for (int cell_idx : actual_path) {
-            full_path.push_back({current_time, cell_idx});
-            if (wait_counts.find(cell_idx) != wait_counts.end()) {
-                int duration = wait_counts[cell_idx];
-                for(int k = 0; k < duration; ++k) {
-                    current_time++;
-                    full_path.push_back({current_time, cell_idx});
-                }
-            }
-            current_time++;
-        }
-    }
-
-    return (int)(actual_path.size() - 1) + wait_count_total;
+    return (path_len - 1) + wait_count_total;
 }
 
-    

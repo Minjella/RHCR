@@ -92,7 +92,7 @@ private:
     void find_conflicts(list<SectionConflict> & new_conflicts, int new_agent);
     void find_conflicts(list<SectionConflict> & new_conflicts);
 
-	void choose_conflict(PBSNodeSection &parent);
+	bool choose_conflict(PBSNodeSection &parent);
 	void copy_conflicts(const list<SectionConflict>& conflicts, list<SectionConflict>& copy, int excluded_agent);
     void copy_conflicts(const list<SectionConflict>& conflicts,
                        list<SectionConflict>& copy, const vector<bool>& excluded_agents);
@@ -119,5 +119,5 @@ private:
     // tools
     static bool wait_at_start(const SectionPath& path, int section_id, int start_index, int timestep) ;
     void find_replan_agents(PBSNodeSection* node, const list<SectionConflict>& conflicts,
-            unordered_set<int>& replan);
+            unordered_set<int>& replan, const unordered_set<int>& already_replanned);
 };

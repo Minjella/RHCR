@@ -1,0 +1,169 @@
+Running 1260 simulations, 10 in parallel...
+  sim_time=5000 sim_window=5 plan_window=10
+  M config: [(300, 100), (400, 100), (500, 100), (600, 100), (700, 100), (800, 100), (900, 30)]
+[10/1260] section  m= 300 seed=  4    57.7s OK
+[20/1260] section  m= 300 seed= 17    57.2s OK
+[30/1260] section  m= 300 seed= 27    56.3s OK
+[40/1260] section  m= 300 seed= 39    64.9s OK
+[50/1260] section  m= 300 seed= 50    54.6s OK
+[60/1260] section  m= 300 seed= 60    53.3s OK
+[70/1260] section  m= 300 seed= 68    61.7s OK
+[80/1260] section  m= 300 seed= 80    52.3s OK
+[90/1260] section  m= 300 seed= 90    52.8s OK
+[100/1260] section  m= 300 seed=100    51.9s OK
+[110/1260] baseline m= 300 seed=  9    82.7s OK
+[120/1260] baseline m= 300 seed= 20    75.4s OK
+[130/1260] baseline m= 300 seed= 30    75.5s OK
+[140/1260] baseline m= 300 seed= 39    77.7s OK
+[150/1260] baseline m= 300 seed= 49    75.8s OK
+[160/1260] baseline m= 300 seed= 59    84.2s OK
+[170/1260] baseline m= 300 seed= 70    75.5s OK
+[180/1260] baseline m= 300 seed= 77    86.5s OK
+[190/1260] baseline m= 300 seed= 90    76.3s OK
+[200/1260] baseline m= 300 seed=100    75.0s OK
+[210/1260] section  m= 400 seed= 10    98.0s OK
+[220/1260] section  m= 400 seed= 19   104.9s OK
+[230/1260] section  m= 400 seed= 30    95.2s OK
+[240/1260] section  m= 400 seed= 40    96.2s OK
+[250/1260] section  m= 400 seed= 48   119.6s OK
+[260/1260] section  m= 400 seed= 60    96.1s OK
+[270/1260] section  m= 400 seed= 70    92.8s OK
+[280/1260] section  m= 400 seed= 80    94.7s OK
+[290/1260] section  m= 400 seed= 90    92.8s OK
+[300/1260] section  m= 400 seed=100    93.7s OK
+[310/1260] baseline m= 400 seed=  9   153.4s OK
+[320/1260] baseline m= 400 seed= 13   179.4s OK
+[330/1260] baseline m= 400 seed= 26   168.0s OK
+[340/1260] baseline m= 400 seed= 31   189.1s OK
+[350/1260] baseline m= 400 seed= 50   149.1s OK
+[360/1260] baseline m= 400 seed= 57   187.2s OK
+[370/1260] baseline m= 400 seed= 70   150.7s OK
+[380/1260] baseline m= 400 seed= 80   151.6s OK
+[390/1260] baseline m= 400 seed= 90   164.4s OK
+[400/1260] baseline m= 400 seed=100   150.1s OK
+[410/1260] section  m= 500 seed= 10   158.7s OK
+[420/1260] section  m= 500 seed= 20   155.0s OK
+[430/1260] section  m= 500 seed= 30   178.9s OK
+[440/1260] section  m= 500 seed= 40   158.1s OK
+[450/1260] section  m= 500 seed= 50   152.5s OK
+[460/1260] section  m= 500 seed= 58   190.0s OK
+[470/1260] section  m= 500 seed= 69   159.6s OK
+[480/1260] section  m= 500 seed= 80   177.9s OK
+[490/1260] section  m= 500 seed= 90   160.1s OK
+[500/1260] section  m= 500 seed=100   166.6s OK
+[510/1260] baseline m= 500 seed= 10   289.1s OK
+[520/1260] baseline m= 500 seed= 20   275.3s OK
+[530/1260] baseline m= 500 seed= 30   270.5s OK
+[540/1260] baseline m= 500 seed= 40   273.5s OK
+[550/1260] baseline m= 500 seed= 50   268.2s OK
+[560/1260] baseline m= 500 seed= 59   298.8s OK
+[570/1260] baseline m= 500 seed= 70   264.8s OK
+[580/1260] baseline m= 500 seed= 80   275.6s OK
+[590/1260] baseline m= 500 seed= 90   267.5s OK
+[600/1260] baseline m= 500 seed=100   291.2s OK
+[610/1260] section  m= 600 seed=  9   305.6s OK
+[620/1260] section  m= 600 seed= 20   258.4s OK
+[630/1260] section  m= 600 seed= 27   313.6s OK
+[640/1260] section  m= 600 seed= 40   259.1s OK
+[650/1260] section  m= 600 seed= 49   301.6s OK
+[660/1260] section  m= 600 seed= 60   270.8s OK
+[670/1260] section  m= 600 seed= 70   291.9s OK
+[680/1260] section  m= 600 seed= 80   280.3s OK
+[690/1260] section  m= 600 seed= 92   262.2s OK
+[700/1260] section  m= 600 seed=100   238.2s OK
+[710/1260] baseline m= 600 seed= 10   448.4s OK
+[720/1260] baseline m= 600 seed= 20   524.7s OK
+[730/1260] baseline m= 600 seed= 30   440.9s OK
+[740/1260] baseline m= 600 seed= 40   435.8s OK
+[750/1260] baseline m= 600 seed= 50   450.5s OK
+[760/1260] baseline m= 600 seed= 60   437.3s OK
+[770/1260] baseline m= 600 seed= 70   444.2s OK
+[780/1260] baseline m= 600 seed= 80   438.9s OK
+[790/1260] baseline m= 600 seed= 90   428.0s OK
+[800/1260] baseline m= 600 seed=100   433.8s OK
+[810/1260] section  m= 700 seed= 10   589.2s OK
+[820/1260] section  m= 700 seed= 17   691.4s OK
+[830/1260] section  m= 700 seed= 27   593.1s OK
+[840/1260] section  m= 700 seed= 38   628.0s OK
+[850/1260] section  m= 700 seed= 50   727.5s OK
+[860/1260] section  m= 700 seed= 60   456.8s OK
+[870/1260] section  m= 700 seed= 69   622.6s OK
+[880/1260] section  m= 700 seed= 80   650.2s OK
+[890/1260] section  m= 700 seed= 90   543.6s OK
+[900/1260] section  m= 700 seed=100   568.2s OK
+[910/1260] baseline m= 700 seed= 10   710.3s OK
+[920/1260] baseline m= 700 seed= 20   701.2s OK
+[930/1260] baseline m= 700 seed= 29   780.6s OK
+[940/1260] baseline m= 700 seed= 40   687.1s OK
+[950/1260] baseline m= 700 seed= 50   706.0s OK
+[960/1260] baseline m= 700 seed= 60   700.8s OK
+[970/1260] baseline m= 700 seed= 70   711.7s OK
+[980/1260] baseline m= 700 seed= 79   732.5s OK
+[990/1260] baseline m= 700 seed= 90   707.7s OK
+[1000/1260] baseline m= 700 seed=100   694.9s OK
+[1010/1260] section  m= 800 seed=  7  2859.3s OK
+[1020/1260] section  m= 800 seed= 21  2087.8s OK
+[1030/1260] section  m= 800 seed= 28  2575.1s OK
+[1040/1260] section  m= 800 seed= 40  2501.7s OK
+[1050/1260] section  m= 800 seed= 50  2115.7s OK
+[1060/1260] section  m= 800 seed= 56  3136.1s OK
+[1070/1260] section  m= 800 seed= 70  2187.2s OK
+[1080/1260] section  m= 800 seed= 80  2047.1s OK
+[1090/1260] section  m= 800 seed= 91  2230.6s OK
+[1100/1260] baseline m= 800 seed=  3  1102.7s OK
+[1110/1260] baseline m= 800 seed=  9  1217.9s OK
+[1120/1260] baseline m= 800 seed= 20  1103.7s OK
+[1130/1260] baseline m= 800 seed= 27  1340.4s OK
+[1140/1260] baseline m= 800 seed= 41  1074.9s OK
+[1150/1260] baseline m= 800 seed= 50  1127.4s OK
+[1160/1260] baseline m= 800 seed= 60  1063.6s OK
+[1170/1260] baseline m= 800 seed= 70  1148.7s OK
+[1180/1260] baseline m= 800 seed= 80  1073.2s OK
+[1190/1260] baseline m= 800 seed= 91  1092.1s OK
+[1200/1260] baseline m= 800 seed=100  1083.7s OK
+[1210/1260] section  m= 900 seed=  3 13760.5s OK
+[1220/1260] section  m= 900 seed= 20 13367.2s OK
+[1230/1260] section  m= 900 seed= 24 11796.1s OK
+[1240/1260] baseline m= 900 seed= 12  1821.0s OK
+[1250/1260] baseline m= 900 seed= 20  1738.4s OK
+[1260/1260] baseline m= 900 seed= 30  1766.0s OK
+
+All runs done in 102044.2s (1700.7 min)
+
+M sweep — w=10 sim_time=5000 sim_window=5
+Total wall time: 1700.7 min
+
+     m |       mode |    n |  throughput |  PBS runtime |     HL exp |    success
+------------------------------------------------------------------------------------------
+   300 |    section |  100 |      9.3041 |      31.96s |      69856 |  100/100
+   400 |    section |  100 |     12.3308 |      56.72s |     126633 |  100/100
+   500 |    section |  100 |     15.3148 |      95.08s |     205869 |  100/100
+   600 |    section |  100 |     18.2355 |     150.66s |     312833 |  100/100
+   700 |    section |  100 |     21.0654 |     235.98s |     458266 |  100/100
+   800 |    section |  100 |     23.7401 |     374.61s |     637994 |  100/100
+   900 |    section |   30 |     26.1832 |     558.67s |     760992 |   30/30
+   300 |   baseline |  100 |      9.3156 |      55.39s |      79409 |  100/100
+   400 |   baseline |  100 |     12.3490 |     116.80s |     141794 |  100/100
+   500 |   baseline |  100 |     15.3281 |     212.95s |     225680 |  100/100
+   600 |   baseline |  100 |     18.2569 |     363.29s |     334741 |  100/100
+   700 |   baseline |  100 |     21.0990 |     596.62s |     474952 |  100/100
+   800 |   baseline |  100 |     23.8143 |     943.19s |     653943 |  100/100
+   900 |   baseline |   30 |     26.3305 |    1500.61s |     883165 |   30/30
+
+=== Section pure vs fallback by m ===
+  m= 300: pure_section=97/100, fallback_events=3
+  m= 400: pure_section=89/100, fallback_events=11
+  m= 500: pure_section=50/100, fallback_events=73
+  m= 600: pure_section=4/100, fallback_events=271
+  m= 700: pure_section=0/100, fallback_events=1106
+  m= 800: pure_section=0/100, fallback_events=5013
+  m= 900: pure_section=0/30, fallback_events=6542
+
+=== Section vs Baseline ratios (per m) ===
+  m= 300: speedup=1.73x, throughput_ratio=0.9988 (section 9.3041 vs baseline 9.3156)
+  m= 400: speedup=2.06x, throughput_ratio=0.9985 (section 12.3308 vs baseline 12.3490)
+  m= 500: speedup=2.24x, throughput_ratio=0.9991 (section 15.3148 vs baseline 15.3281)
+  m= 600: speedup=2.41x, throughput_ratio=0.9988 (section 18.2355 vs baseline 18.2569)
+  m= 700: speedup=2.53x, throughput_ratio=0.9984 (section 21.0654 vs baseline 21.0990)
+  m= 800: speedup=2.52x, throughput_ratio=0.9969 (section 23.7401 vs baseline 23.8143)
+  m= 900: speedup=2.69x, throughput_ratio=0.9944 (section 26.1832 vs baseline 26.3305)

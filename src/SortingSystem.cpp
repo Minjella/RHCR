@@ -192,11 +192,14 @@ void SortingSystem::simulate(int simulation_time)
 		}
 
 
-		solve_by_Section(mapSys);
-		
-		
-
-		//solve();
+		{
+			const char* mode_env = std::getenv("RHCR_SOLVER_MODE");
+			if (mode_env && std::string(mode_env) == "baseline") {
+				solve();
+			} else {
+				solve_by_Section(mapSys);
+			}
+		}
 		// move drives
 		auto new_finished_tasks = move();
 		std::cout << new_finished_tasks.size() << " tasks has been finished" << std::endl;
@@ -233,6 +236,8 @@ void SortingSystem::simulate(int simulation_time)
 	update_start_locations();
 	std::cout << std::endl << "Done!" << std::endl;
 
+	// [DIAG] section 모드 wall-clock breakdown 출력 (진단용)
+	print_diagnostics();
 
 
 

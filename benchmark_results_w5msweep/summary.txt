@@ -1,0 +1,17 @@
+M sweep — w=5 sim_time=5000 sim_window=5
+Total wall time: 135.1 min
+
+     m |       mode |    n |  throughput |  PBS runtime |     HL exp |    success
+------------------------------------------------------------------------------------------
+   700 |    section |   30 |     20.6640 |     186.09s |     292551 |   30/30
+   800 |    section |   30 |     23.2328 |     229.79s |     401474 |   30/30
+   700 |   baseline |   30 |     20.6279 |     455.51s |     310151 |   30/30
+   800 |   baseline |   30 |     23.2066 |     683.54s |     418020 |   30/30
+
+=== Section pure vs fallback by m ===
+  m= 700: pure_section=0/30, fallback_events=392
+  m= 800: pure_section=0/30, fallback_events=1306
+
+=== Section vs Baseline ratios (per m) ===
+  m= 700: speedup=2.45x, throughput_ratio=1.0018 (section 20.6640 vs baseline 20.6279)
+  m= 800: speedup=2.97x, throughput_ratio=1.0011 (section 23.2328 vs baseline 23.2066)
