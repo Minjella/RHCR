@@ -73,6 +73,30 @@ private:
 
     std::clock_t start = 0;
 
+    // Scratch buffers for find_conflicts — reused across calls to avoid
+    // per-call heap allocation. clear()/assign() preserves capacity.
+    std::vector<int> fc_sizes;
+    std::vector<int> fc_sec_idx;
+    std::vector<int> fc_sec_inside_idx;
+    std::vector<uint32_t> fc_new_keys;
+    std::unordered_set<uint64_t> fc_pair_reported;
+    std::unordered_map<uint32_t, std::vector<int>> fc_bucket;
+
+    // Per-agent timestep-major (section_id, cell_idx) key cache. Incremental:
+    // rows are refreshed only when their underlying paths[a] pointer changed
+    // since the last cache sync (refresh_keys_cache scan), plus eager update
+    // when find_path succeeds. Survives across find_consistent_paths calls,
+    // so no repeated O(N·W) rebuild per fcp entry.
+    //
+    // Flat layout: [a * fc_W + ts]. UINT32_MAX at out-of-range ts.
+    // Invariant: fc_cache_path_ptr[a] == paths[a] after refresh_keys_cache().
+    std::vector<uint32_t> fc_keys_flat;
+    std::vector<int> fc_keys_size;                 // per-agent valid length
+    std::vector<const SectionPath*> fc_cache_path_ptr; // path pointer seen at last cache sync
+    int fc_W = 0; // cached (window + 1) for current cache layout
+    void build_keys_for_agent(int a);
+    void refresh_keys_cache();
+
     unordered_set<pair<int, int>> nogood; // ?? nogood이 뭔지 찾아서 고쳐야함 -> a1, a2
 
     bool generate_root_node(MapSystem* mapsys);
@@ -90,7 +114,12 @@ private:
     void find_conflicts(const list<SectionConflict>& old_conflicts, list<SectionConflict> & new_conflicts, int new_agent);
 	void find_conflicts(list<SectionConflict> & conflicts, int a1, int a2);
     void find_conflicts(list<SectionConflict> & new_conflicts, int new_agent);
-    void find_conflicts(list<SectionConflict> & new_conflicts);
+    // stop_after_first_ts: if true, break out of timestep loop after the
+    // first timestep that produced any conflict. Safe only when choose_conflict
+    // won't need conflicts beyond that timestep — i.e. nogood is empty (no
+    // risk of picking a later non-nogood when earliest is all nogood).
+    void find_conflicts(list<SectionConflict> & new_conflicts,
+                        bool stop_after_first_ts = false);
 
 	bool choose_conflict(PBSNodeSection &parent);
 	void copy_conflicts(const list<SectionConflict>& conflicts, list<SectionConflict>& copy, int excluded_agent);

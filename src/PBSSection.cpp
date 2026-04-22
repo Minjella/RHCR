@@ -2,6 +2,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 #include <cstdint>
@@ -43,6 +44,9 @@ void PBSSection::clear()
     paths.clear();
     nogood.clear();
     dfs.clear();
+    // Drop stale pointers from previous run_section — allNodes (and their
+    // embedded SectionPaths) are freed in release_closed_list() below.
+    std::fill(fc_cache_path_ptr.begin(), fc_cache_path_ptr.end(), nullptr);
     release_closed_list();
     start_sections.clear();
     goal_locations.clear();
@@ -163,72 +167,84 @@ void PBSSection::find_conflicts(list<SectionConflict>& conflicts, int a1, int a2
 	runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
 }
 
-void PBSSection::find_conflicts(list<SectionConflict>& conflicts)
+void PBSSection::find_conflicts(list<SectionConflict>& conflicts, bool stop_after_first_ts)
 {
     // Bucketing: at each timestep, group agents by (section_id, cell_idx).
     // For each new agent arriving in a bucket, emit pairwise conflict with
     // every prior occupant (captures 3-way+ collisions). First-time-only
-    // semantics preserved via pair_reported set.
+    // semantics preserved via fc_pair_reported set.
+    //
+    // stop_after_first_ts: see header comment. choose_conflict picks the
+    // earliest-timestep non-nogood conflict, so the first ts that produces
+    // conflicts carries all that choose_conflict needs — unless those are
+    // all nogood and a later-ts non-nogood exists. Caller guards on
+    // nogood.empty() to avoid that case.
     clock_t t = clock();
 
     const int W = window + 1;
 
-    std::vector<int> sizes(num_of_agents, 0);
-    std::vector<int> sec_idx(num_of_agents, 0);
-    std::vector<int> sec_inside_idx(num_of_agents, 0);
+    fc_sizes.assign(num_of_agents, 0);
+    fc_sec_idx.assign(num_of_agents, 0);
+    fc_sec_inside_idx.assign(num_of_agents, 0);
 
     for (int a = 0; a < num_of_agents; a++) {
         if (paths[a] != nullptr && !paths[a]->empty())
-            sizes[a] = std::min(W, paths[a]->back().timestep);
+            fc_sizes[a] = std::min(W, paths[a]->back().timestep);
     }
 
-    std::unordered_set<uint64_t> pair_reported;
-    std::unordered_map<uint32_t, std::vector<int>> bucket;
-    bucket.reserve(num_of_agents * 2);
+    fc_pair_reported.clear();
+    for (auto& kv : fc_bucket) kv.second.clear();
+    if (fc_bucket.bucket_count() < (size_t)num_of_agents * 2)
+        fc_bucket.reserve(num_of_agents * 2);
 
     for (int ts = 0; ts < W; ts++)
     {
-        for (auto& kv : bucket) kv.second.clear();
+        for (auto& kv : fc_bucket) kv.second.clear();
+
+        const size_t conflicts_before_ts = conflicts.size();
 
         for (int a = 0; a < num_of_agents; a++)
         {
-            if (sizes[a] <= ts) continue;
+            if (fc_sizes[a] <= ts) continue;
 
             auto& path_a = *paths[a];
 
-            if (sec_idx[a] + 1 < (int)path_a.size() && path_a[sec_idx[a] + 1].timestep == ts) {
-                sec_idx[a] += 1;
-                sec_inside_idx[a] = 0;
+            if (fc_sec_idx[a] + 1 < (int)path_a.size() && path_a[fc_sec_idx[a] + 1].timestep == ts) {
+                fc_sec_idx[a] += 1;
+                fc_sec_inside_idx[a] = 0;
             }
 
-            const auto& state = path_a[sec_idx[a]];
+            const auto& state = path_a[fc_sec_idx[a]];
             const auto& fp = state.full_path;
 
             // full_path 범위 초과 시 마지막 셀에서 대기 중인 것으로 처리.
             // 이전 코드는 skip + double-increment 해서 이후 index가 전부 밀려
             // 충돌 감지를 놓치는 버그가 있었음.
             int cell_idx;
-            if (sec_inside_idx[a] >= (int)fp.size()) {
+            if (fc_sec_inside_idx[a] >= (int)fp.size()) {
                 cell_idx = fp.back().second;
             } else {
-                cell_idx = fp[sec_inside_idx[a]].second;
-                sec_inside_idx[a] += 1;
+                cell_idx = fp[fc_sec_inside_idx[a]].second;
+                fc_sec_inside_idx[a] += 1;
             }
 
             const int section_id = state.section_id;
             const uint32_t key = ((uint32_t)section_id << 4) | (uint32_t)cell_idx;
 
-            auto& occ = bucket[key];
+            auto& occ = fc_bucket[key];
             for (int other : occ) {
                 int a1 = std::min(a, other);
                 int a2 = std::max(a, other);
                 uint64_t pkey = ((uint64_t)a1 << 32) | (uint32_t)a2;
-                if (pair_reported.insert(pkey).second) {
+                if (fc_pair_reported.insert(pkey).second) {
                     conflicts.emplace_back(a1, a2, section_id, cell_idx, ts, ConflictType::TILE_VERTEX);
                 }
             }
             occ.push_back(a);
         }
+
+        if (stop_after_first_ts && conflicts.size() > conflicts_before_ts)
+            break;
     }
 
     runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
@@ -236,74 +252,95 @@ void PBSSection::find_conflicts(list<SectionConflict>& conflicts)
 
 // (agent-key caching removed — invalidation bug caused spurious conflict miss)
 
+void PBSSection::build_keys_for_agent(int a)
+{
+    if (fc_W <= 0) return;
+    const int base = a * fc_W;
+    // Default: no key (indicates no conflict possible at that ts).
+    for (int i = 0; i < fc_W; i++) fc_keys_flat[base + i] = UINT32_MAX;
+    fc_keys_size[a] = 0;
+    if (a < 0 || a >= num_of_agents) return;
+    if (paths[a] == nullptr || paths[a]->empty()) return;
+    auto& path_a = *paths[a];
+    const int size_a = std::min(fc_W, path_a.back().timestep);
+    if (size_a <= 0) return;
+    int si = 0, sii = 0;
+    for (int ts = 0; ts < size_a; ts++) {
+        if (si + 1 < (int)path_a.size() && path_a[si + 1].timestep == ts) {
+            si += 1; sii = 0;
+        }
+        const auto& state = path_a[si];
+        const auto& fp = state.full_path;
+        int cell_idx;
+        if (sii >= (int)fp.size()) {
+            cell_idx = fp.back().second;
+        } else {
+            cell_idx = fp[sii].second;
+            sii += 1;
+        }
+        fc_keys_flat[base + ts] = ((uint32_t)state.section_id << 4) | (uint32_t)cell_idx;
+    }
+    fc_keys_size[a] = size_a;
+}
+
+void PBSSection::refresh_keys_cache()
+{
+    const int W = window + 1;
+    const bool layout_stale =
+        (fc_W != W) ||
+        ((int)fc_keys_size.size() != num_of_agents) ||
+        (fc_keys_flat.size() != (size_t)num_of_agents * (size_t)W);
+
+    if (layout_stale) {
+        fc_W = W;
+        fc_keys_flat.assign((size_t)num_of_agents * fc_W, UINT32_MAX);
+        fc_keys_size.assign(num_of_agents, 0);
+        fc_cache_path_ptr.assign(num_of_agents, nullptr);
+    }
+
+    // Rebuild only rows whose underlying path pointer changed since last sync.
+    for (int a = 0; a < num_of_agents; a++) {
+        const SectionPath* cur = paths[a];
+        if (fc_cache_path_ptr[a] != cur) {
+            build_keys_for_agent(a);
+            fc_cache_path_ptr[a] = cur;
+        }
+    }
+}
+
 void PBSSection::find_conflicts(list<SectionConflict>& new_conflicts, int new_agent)
 {
-    // Cache new_agent's (section, cell) per timestep once, then walk every
-    // other agent's path in linear time with direct key comparison.
+    // Uses fc_keys_flat cache populated by find_consistent_paths and kept
+    // fresh for the replanned agent via build_keys_for_agent(new_agent).
     clock_t t = clock();
 
-    if (paths[new_agent] == nullptr || paths[new_agent]->empty()) {
+    if (fc_W <= 0 || new_agent < 0 || new_agent >= num_of_agents) {
         runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
         return;
     }
 
-    const int W = window + 1;
-    const int size_new = std::min(W, paths[new_agent]->back().timestep);
-
+    const int size_new = fc_keys_size[new_agent];
     if (size_new <= 0) {
         runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
         return;
     }
 
-    std::vector<uint32_t> new_keys(size_new, UINT32_MAX);
-    {
-        auto& path_new = *paths[new_agent];
-        int si = 0, sii = 0;
-        for (int ts = 0; ts < size_new; ts++) {
-            if (si + 1 < (int)path_new.size() && path_new[si + 1].timestep == ts) {
-                si += 1; sii = 0;
-            }
-            const auto& state = path_new[si];
-            const auto& fp = state.full_path;
-            int cell_idx;
-            if (sii >= (int)fp.size()) {
-                cell_idx = fp.back().second;
-            } else {
-                cell_idx = fp[sii].second;
-                sii += 1;
-            }
-            new_keys[ts] = ((uint32_t)state.section_id << 4) | (uint32_t)cell_idx;
-        }
-    }
+    const uint32_t* new_row = fc_keys_flat.data() + (size_t)new_agent * fc_W;
 
     for (int a = 0; a < num_of_agents; a++)
     {
-        if (a == new_agent || paths[a] == nullptr || paths[a]->empty()) continue;
-
-        const int size_a = std::min(W, paths[a]->back().timestep);
+        if (a == new_agent) continue;
+        const int size_a = fc_keys_size[a];
         const int max_ts = std::min(size_a, size_new);
         if (max_ts <= 0) continue;
-
-        auto& path_a = *paths[a];
-        int si = 0, sii = 0;
-
+        const uint32_t* a_row = fc_keys_flat.data() + (size_t)a * fc_W;
         for (int ts = 0; ts < max_ts; ts++) {
-            if (si + 1 < (int)path_a.size() && path_a[si + 1].timestep == ts) {
-                si += 1; sii = 0;
-            }
-            const auto& state = path_a[si];
-            const auto& fp = state.full_path;
-            int cell_idx;
-            if (sii >= (int)fp.size()) {
-                cell_idx = fp.back().second;
-            } else {
-                cell_idx = fp[sii].second;
-                sii += 1;
-            }
-            const uint32_t key = ((uint32_t)state.section_id << 4) | (uint32_t)cell_idx;
-
-            if (key == new_keys[ts]) {
-                new_conflicts.emplace_back(new_agent, a, state.section_id, cell_idx, ts, ConflictType::TILE_VERTEX);
+            const uint32_t k = a_row[ts];
+            if (k == new_row[ts] && k != UINT32_MAX) {
+                // Decode section_id and cell_idx from key for conflict record.
+                const int section_id = (int)(k >> 4);
+                const int cell_idx = (int)(k & 0xFu);
+                new_conflicts.emplace_back(new_agent, a, section_id, cell_idx, ts, ConflictType::TILE_VERTEX);
                 break;
             }
         }
@@ -387,21 +424,33 @@ bool PBSSection::choose_conflict(PBSNodeSection &node)
                nogood.count(std::make_pair(c.agent2, c.agent1));
     };
 
-    // nogood에 등록된 conflict(=우선순위 분기로도 풀리지 않는 쌍)는 피하고,
-    // 그 중에서 가장 이른 timestep의 conflict를 선택한다. 모든 conflict가
-    // nogood이면 이 노드는 어떤 fork도 진전을 만들 수 없으므로 실패를 알려서
-    // main loop가 이 노드를 skip하고 dfs의 다른 경로를 탐색하게 한다. 이전에는
-    // 여기서 nogood conflict를 그대로 집어버려 동일한 pair를 무한히 다시
-    // 고르는 라이브락이 생겼다.
-    const SectionConflict* picked = nullptr;
+    // Opt 2: earliest-ts primary (stable with previous behavior);
+    // tiebreak at the same earliest ts on the "most tangled" pair —
+    // the one whose agents appear in more other non-nogood conflicts.
+    // Resolving a tangled pair cascades further via priority edges.
+    std::unordered_map<int, int> agent_deg;
+    agent_deg.reserve(node.conflicts.size() * 2);
     for (const auto& c : node.conflicts) {
         if (in_nogood(c)) continue;
-        if (picked == nullptr || c.timestep < picked->timestep)
+        agent_deg[c.agent1]++;
+        agent_deg[c.agent2]++;
+    }
+
+    const SectionConflict* picked = nullptr;
+    int best_ts = std::numeric_limits<int>::max();
+    int best_score = -1;
+    for (const auto& c : node.conflicts) {
+        if (in_nogood(c)) continue;
+        const int score = agent_deg[c.agent1] + agent_deg[c.agent2];
+        if (c.timestep < best_ts ||
+            (c.timestep == best_ts && score > best_score)) {
+            best_ts = c.timestep;
+            best_score = score;
             picked = &c;
+        }
     }
-    if (picked == nullptr) {
-        return false;
-    }
+    if (picked == nullptr) return false;
+
     node.conflict = *picked;
     node.earliest_collision = node.conflict.timestep;
     return true;
@@ -544,6 +593,12 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
         replan.insert(agent);
     find_replan_agents(node, node->conflicts, replan, already_replanned);
 
+    // Opt C: refresh per-agent key cache incrementally. Only rows whose
+    // underlying path pointer changed since last sync get rebuilt — the
+    // rest survive across find_consistent_paths calls. Replanned agents
+    // inside the loop below also update their row via build_keys_for_agent.
+    refresh_keys_cache();
+
     
 
     // node->paths는 이 노드에서 "새로 replan된" agent만 담는 list라 child에선 매우
@@ -582,6 +637,12 @@ bool PBSSection::find_consistent_paths(PBSNodeSection* node, int agent, MapSyste
         //already_replanned.insert(a);
 
         // std::cout << "✅ [find_path 성공] agent=" << a << "\n";
+
+        // find_path updated paths[a]; refresh cached key row so subsequent
+        // find_conflicts sees the new path, and record new pointer so
+        // refresh_keys_cache on next fcp entry won't redundantly rebuild.
+        build_keys_for_agent(a);
+        fc_cache_path_ptr[a] = paths[a];
 
         remove_conflicts(node->conflicts, a);
         list<SectionConflict> new_conflicts;
@@ -740,6 +801,9 @@ bool PBSSection::generate_root_node(MapSystem* mapsys)
         dummy_start->makespan = std::max<size_t>(dummy_start->makespan, paths[i]->back().timestep);
         dummy_start->g_val += path_cost;
 	}
+    // Full scan at root: we want find_consistent_paths (line below) to see
+    // every initial conflict so early replan commits more priorities upfront.
+    // Measured: truncating here cost +4–6% HL expansion.
     find_conflicts(dummy_start->conflicts);
     if (!lazyPriority)
     {
@@ -880,19 +944,14 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
 
         if (curr->conflicts.empty())
         {
-            // Safety net: bucketing find_conflicts(all-pair)로 빠르게 cross-check.
-            // 이전 구현은 O(N²·W) pairwise 125k-call이었는데 bucketing(O(N·W))로 50x 감소.
-            list<SectionConflict> safety_check;
-            find_conflicts(safety_check);
-            if (!safety_check.empty()) {
-                curr->conflicts = std::move(safety_check);
-                curr->num_of_collisions = curr->conflicts.size();
-            } else {
-                solution_found = true;
-                solution_cost = curr->g_val;
-                best_node = curr;
-                break;
-            }
+            // Opt 1: trust incremental conflict tracking (backed by the
+            // per-agent key cache in find_consistent_paths) and skip the
+            // former O(N·W) bucketing safety-net scan. validate_solution()
+            // at end-of-run is the final correctness check.
+            solution_found = true;
+            solution_cost = curr->g_val;
+            best_node = curr;
+            break;
         }
 	
 		if (!choose_conflict(*curr))
@@ -963,8 +1022,34 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
         {
             if (n[0] != nullptr && n[1] != nullptr) // 두가지 노드 모두 생성
             {
-                if (n[0]->f_val < n[1]->f_val ||
-                    (n[0]->f_val == n[1]->f_val && n[0]->num_of_collisions < n[1]->num_of_collisions))
+                // Opt 3 (Variant E): DFS pops from the back, so the child we
+                // push LAST is expanded first.
+                //
+                // Use num_collisions as the primary key ONLY when the two
+                // children's collision counts differ meaningfully (|Δc| ≥ 2).
+                // Otherwise fall back to f_val primary / collisions tiebreak
+                // (the original RHCR ordering).
+                //
+                // Rationale: a pure collisions-primary rule (earlier attempt)
+                // halved w=10 wall but exploded w=5 primary-fail rate 5.5×.
+                // The low-collision child at w=5 often commits priority edges
+                // that later force nogood; f_val (=g_val, cost) is a gentler
+                // signal when the two children are close. Only when one child
+                // is clearly closer to feasible do we trust collisions.
+                const int c0 = n[0]->num_of_collisions;
+                const int c1 = n[1]->num_of_collisions;
+                const int dc = c0 > c1 ? c0 - c1 : c1 - c0;
+                const int kCollisionMargin = 2;
+
+                bool prefer_n0;
+                if (dc >= kCollisionMargin) {
+                    prefer_n0 = (c0 < c1);
+                } else {
+                    prefer_n0 = (n[0]->f_val < n[1]->f_val ||
+                                 (n[0]->f_val == n[1]->f_val && c0 < c1));
+                }
+
+                if (prefer_n0)
                 {
                     push_node(n[1]);
                     push_node(n[0]);
