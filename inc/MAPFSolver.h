@@ -35,10 +35,20 @@ public:
 
 	SingleAgentSolver& path_planner;
 	SIPPSection* section_path_planner;
-	// Runs the algorithm until the problem is solved or time is exhausted 
+	// Runs the algorithm until the problem is solved or time is exhausted
     virtual bool run(const vector<State>& starts,
             const vector< vector<pair<int, int> > >& goal_locations,  // an ordered list of pairs of <location, release time>
             int time_limit) = 0;
+
+    // Section-mode entry point. Default impl signals "not supported" so only
+    // section-capable solvers (PBSSection, ECBSSection, ...) override it.
+    virtual bool run_section(const vector<SectionState>& /*start_sections*/,
+            const vector<vector<pair<SectionState, int> > > /*goal_sections*/,
+            int /*time_limit*/, class MapSystem* /*mapsys*/)
+    {
+        std::cerr << "[Error] run_section not implemented for this solver." << std::endl;
+        return false;
+    }
 
 
 	MAPFSolver(const BasicGraph& G, SingleAgentSolver& path_planner);

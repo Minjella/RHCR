@@ -39,10 +39,10 @@ public:
             const vector< vector<pair<int, int> > >& goal_locations,  // an ordered list of pairs of <location, release time>
             int time_limit) override;
 
-	// Runs the algorithm until the problem is solved or time is exhausted 
+	// Runs the algorithm until the problem is solved or time is exhausted
     bool run_section(const vector<SectionState>& start_sections,
             const vector<vector<pair<SectionState, int> > > goal_sections, // an ordered list of pairs of <location, release time>
-            int time_limit, MapSystem* mapsys);
+            int time_limit, MapSystem* mapsys) override;
 
 
     PBSSection(const BasicGraph& G, SingleAgentSolver& path_planner);

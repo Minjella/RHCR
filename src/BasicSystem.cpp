@@ -9,7 +9,7 @@
 
 
 BasicSystem::BasicSystem(const BasicGraph& G, MAPFSolver& solver): G(G), solver(solver), solver_section(nullptr), num_of_tasks(0) {}
-BasicSystem::BasicSystem(const BasicGraph& G, MAPFSolver& solver, PBSSection& solver_section): G(G), solver(solver), solver_section(&solver_section), num_of_tasks(0) {}
+BasicSystem::BasicSystem(const BasicGraph& G, MAPFSolver& solver, MAPFSolver& solver_section): G(G), solver(solver), solver_section(&solver_section), num_of_tasks(0) {}
 
 BasicSystem::~BasicSystem() {}
 

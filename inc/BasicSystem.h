@@ -9,6 +9,7 @@
 #include "SectionState.h"
 #include "MapSystem.h"
 #include "PBSSection.h"
+#include "ECBSSection.h"
 
 
 class BasicSystem
@@ -16,7 +17,9 @@ class BasicSystem
 public:
     // params for MAPF algotithms
 	MAPFSolver& solver;
-    PBSSection* solver_section;
+    // 섹션 기반 solver는 MAPFSolver를 상속한 구현체(PBSSection, ECBSSection 등)를
+    // 받는다. BasicSystem은 run_section/save_* 가상 인터페이스만 호출한다.
+    MAPFSolver* solver_section;
 	bool hold_endpoints;
 	bool useDummyPaths;
     int time_limit;
@@ -37,7 +40,7 @@ public:
     int k_robust;
 
     BasicSystem(const BasicGraph& G, MAPFSolver& solver);
-    BasicSystem(const BasicGraph& G, MAPFSolver& solver, PBSSection& solver_section);
+    BasicSystem(const BasicGraph& G, MAPFSolver& solver, MAPFSolver& solver_section);
     ~BasicSystem();
 
 	// TODO

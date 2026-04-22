@@ -12,7 +12,7 @@
 
 SortingSystem::SortingSystem(const SortingGrid& G, MAPFSolver& solver): BasicSystem(G, solver), c(8), G(G) {}
 
-SortingSystem::SortingSystem(const SortingGrid& G, MAPFSolver& solver, PBSSection& solver_section): BasicSystem(G, solver, solver_section), c(8), G(G) {}
+SortingSystem::SortingSystem(const SortingGrid& G, MAPFSolver& solver, MAPFSolver& solver_section): BasicSystem(G, solver, solver_section), c(8), G(G) {}
 
 
 SortingSystem::~SortingSystem() {}

@@ -365,6 +365,12 @@ void ReservationTable::build(const vector<Path*>& paths,
 
 	addInitialConstraints(initial_constraints, current_agent); // add initial constraints
 
+    if (!use_cat)
+    {
+        runtime = (std::clock() - t) * 1.0  / CLOCKS_PER_SEC;
+        return;
+    }
+
     /* add soft constraints */
 	// compute the max timestep that cat needs
 	size_t cat_size = 0;
@@ -388,7 +394,7 @@ void ReservationTable::build(const vector<Path*>& paths,
 	{
 		if (i == current_agent || paths[i] == nullptr)
 			continue;
-		
+
        insertPath2CAT(*paths[i]);
     }
     runtime = (std::clock() - t) * 1.0  / CLOCKS_PER_SEC;

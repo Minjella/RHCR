@@ -9,107 +9,85 @@
 #include <tuple>
 #include <map>
 
-// SectionState, SectionPath
 #include <SectionState.h>
 #include <MapSystem.h>
 
-// // <start_time, end_time, current_capacity>
+// <start_time, end_time, current_capacity>
 typedef std::tuple<int, int, int> SecInterval;
 
-static constexpr int MAX_TIME_LIMIT = (1 << 14) -1;
+static constexpr int MAX_TIME_LIMIT = (1 << 14) - 1;
 
 class ReservationSection {
     private:
-        // ---------------------------------------------------------
-        // 1. 32-bit Packing Logic
-        // Layout: [ Time (14bit) | SectionID (14bit) | CellIdx (4bit) ]
-        // ---------------------------------------------------------
-        
-        // 각 데이터가 차지할 비트 수
-        static constexpr int BITS_CELL    = 4;  // Max 15
-        static constexpr int BITS_SECTION = 14; // Max 16383
-        // Time은 나머지 14비트 사용 (Max 16383)
+        // 32-bit packing: [ Time (14bit) | SectionID (14bit) | CellIdx (4bit) ]
+        static constexpr int BITS_CELL    = 4;
+        static constexpr int BITS_SECTION = 14;
 
-        // 시프트 위치 계산
-        static constexpr int SHIFT_SECTION = BITS_CELL;             // 4
-        static constexpr int SHIFT_TIME    = BITS_CELL + BITS_SECTION; // 4 + 14 = 18
+        static constexpr int SHIFT_SECTION = BITS_CELL;
+        static constexpr int SHIFT_TIME    = BITS_CELL + BITS_SECTION;
 
-        // 마스크 (유효성 검사용, 선택 사항)
         static constexpr int MAX_CELL    = (1 << BITS_CELL) - 1;
         static constexpr int MAX_SECTION = (1 << BITS_SECTION) - 1;
         static constexpr int MAX_TIME    = (1 << (32 - SHIFT_TIME)) - 1;
 
-        // 키 생성 함수 (32비트 반환)
         inline uint32_t make_cell_key(int time, int section_id, int cell_idx) const;
-        //inline uint32_t make_section_key(int time, int section_id) const;
 
-        // ---------------------------------------------------------
-        // 2. Data Structures
-        // ---------------------------------------------------------
-        
-        // Key: Combined(Time, Section, Cell) -> Value: AgentID
-        std::unordered_map<uint32_t, int> cell_table; 
-        
-        // SectionID -> { Time -> CountDelta }
+        // Bit-vector cell block storage (Grid-ECBS의 CAT vector<vector<bool>> 패턴).
+        // cell_blocked_mask[time][section_id] = uint32_t, bit i = cell i blocked.
+        // is_cell_safe는 hash lookup(~100ns) 대신 직접 배열 접근(~5ns)으로 20x 빠름.
+        // Dirty tracking으로 clear() O(|constraints|) 유지.
+        std::vector<std::vector<uint32_t>> cell_blocked_mask;
+        std::vector<std::pair<int, int>> dirty_cells;  // (time, section) touched
+
+        // SectionID -> { Time -> CountDelta } (capacity / congestion tracking).
         std::unordered_map<int, std::map<int, int>> section_timeline;
 
-        // SIT (Safe Interval Table) SectionID -> Value
+        // SIT cache: SectionID -> intervals.
         std::unordered_map<int, std::vector<SecInterval>> sit_cache;
 
-        // Key: SectionKey (Time | Section) -> Value: Agent ID vector
-        // CBS에서 제약을 걸거나, 맵의 문이 닫히는 경우 사용
+        // CBS에서 제약을 걸거나 맵 문이 닫힐 때 사용 (예약됨, 현재 미사용).
         std::unordered_map<uint32_t, std::vector<int>> section_constraints;
 
-        // SIT cache update
         void update_sit(int section_id);
 
-
     public:
-        ReservationSection(){
-            cell_table.reserve(10000);
-            // section_count_table.reserve(5000);
+        ReservationSection() {
+            cell_blocked_mask.reserve(32);  // typical time horizon
+            dirty_cells.reserve(256);
         }
 
-        void clear(){
-            cell_table.clear();
+        void clear() {
+            // Zero only the dirty (time, section) cells - O(|dirty|).
+            for (auto& ts : dirty_cells) {
+                if (ts.first < (int)cell_blocked_mask.size() &&
+                    ts.second < (int)cell_blocked_mask[ts.first].size())
+                    cell_blocked_mask[ts.first][ts.second] = 0;
+            }
+            dirty_cells.clear();
             section_timeline.clear();
             sit_cache.clear();
             section_constraints.clear();
         }
 
-        // PBS build function
-        void build(const std::vector<SectionPath*>& paths, const boost::unordered_set<int>& high_priority_agents, MapSystem* MapSys);
-        
+        // PBS용: 높은 우선순위 agent들의 경로를 cell_table + section_timeline에 반영.
+        void build(const std::vector<SectionPath*>& paths,
+                   const boost::unordered_set<int>& high_priority_agents,
+                   MapSystem* MapSys);
+
         bool use_cat;
         bool prioritize_start;
 
-        //void add_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
-
-        //void remove_reservation(int agent_id, int start_time, int end_time, int section_id, int cell_idx);
-
-        // 충돌 체크 (PBS 우선순위 로직 포함)
-        // True: 지나갈 수 있음, False: 막힘
-        //bool is_cell_available(int time, int section_id, int cell_idx, int my_agent_id, const PriorityGraph* pg) const;
-
-        // 섹션 혼잡도 체크 (Capacity Constraint)
-        //bool is_section_capacity_okay(int time, int section_id, int capacity) const;
-
-        //void add_section_constraint(int time, int section_id, int agent_id);
-
-        // 제약 해제
-        //void remove_section_constraint(int time, int section_id, int agent_id);
-
-        //bool is_safe(int time, int section_id, int pre_section_id, int cell_idx, int my_id, int capacity, const PriorityGraph* pg) const ;
-
-        // 혼잡도 카운트 조회 (필요 시)
         int get_congestion_count(int time, int section_id) const;
-
-        // void update_sit(int section_id, int capacity);
-
-        // void merge_intervals(std::list<SecInterval>& intervals) const;
 
         const std::vector<SecInterval>& get_safe_intervals(int section_id);
 
         bool is_cell_safe(int time, int section_id, int cell_idx) const;
-        
+
+        // ECBS용 CT constraint: cell_table에 sentinel(-1)로 주입.
+        // is_cell_safe가 map 존재 여부만 보므로 이 (time, section, cell)은 low-level에서 차단됨.
+        // 해당 agent의 low-level search 직전에만 호출하고, clear() / init_empty()로 되돌린다.
+        void add_cell_constraint(int time, int section_id, int cell_idx);
+
+        // Pure-CBS용 empty 초기화. 모든 테이블을 비우고 add_cell_constraint로만 제약을 주입.
+        void init_empty();
 };

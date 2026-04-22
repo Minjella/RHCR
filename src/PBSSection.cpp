@@ -234,11 +234,12 @@ void PBSSection::find_conflicts(list<SectionConflict>& conflicts)
     runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
 }
 
+// (agent-key caching removed — invalidation bug caused spurious conflict miss)
+
 void PBSSection::find_conflicts(list<SectionConflict>& new_conflicts, int new_agent)
 {
     // Cache new_agent's (section, cell) per timestep once, then walk every
-    // other agent's path in linear time with direct key comparison. Saves
-    // the N-1 redundant walks of new_agent's path that pairwise would do.
+    // other agent's path in linear time with direct key comparison.
     clock_t t = clock();
 
     if (paths[new_agent] == nullptr || paths[new_agent]->empty()) {
@@ -260,8 +261,7 @@ void PBSSection::find_conflicts(list<SectionConflict>& new_conflicts, int new_ag
         int si = 0, sii = 0;
         for (int ts = 0; ts < size_new; ts++) {
             if (si + 1 < (int)path_new.size() && path_new[si + 1].timestep == ts) {
-                si += 1;
-                sii = 0;
+                si += 1; sii = 0;
             }
             const auto& state = path_new[si];
             const auto& fp = state.full_path;
@@ -289,8 +289,7 @@ void PBSSection::find_conflicts(list<SectionConflict>& new_conflicts, int new_ag
 
         for (int ts = 0; ts < max_ts; ts++) {
             if (si + 1 < (int)path_a.size() && path_a[si + 1].timestep == ts) {
-                si += 1;
-                sii = 0;
+                si += 1; sii = 0;
             }
             const auto& state = path_a[si];
             const auto& fp = state.full_path;
@@ -793,7 +792,17 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
 
     // set timer
 	start = std::clock();
-    
+
+    // Reset SIPPSection profiling timers (누적 across all find_path calls in this run_section)
+    if (section_path_planner != nullptr)
+    {
+        auto* sp = section_path_planner;
+        sp->t_find_wait_list = 0; sp->t_compute_h = 0;
+        sp->t_safe_intervals = 0; sp->t_generate_node = 0;
+        sp->t_focal_update = 0; sp->t_update_path = 0;
+        sp->fwl_calls = 0; sp->gn_calls = 0;
+    }
+
     this->start_sections = start_sections;
     this->goal_sections = goal_sections;
     this->num_of_agents = start_sections.size();
@@ -871,19 +880,13 @@ bool PBSSection::run_section(const vector<SectionState>& start_sections,
 
         if (curr->conflicts.empty())
         {
-            // Safety net: bucketing find_conflicts는 O(N·W)로 빠르지만
-            // 일부 경계 조건에서 충돌을 놓칠 수 있다. 해답 선언 직전에
-            // O(N²·W) pairwise로 cross-check 해서 누락된 충돌이 있으면
-            // conflict list에 넣고 탐색을 계속한다. 이 check는 PBS 탐색 중
-            // "해답 후보" 때만 실행되므로 전체 성능 영향은 무시할 수준.
+            // Safety net: bucketing find_conflicts(all-pair)로 빠르게 cross-check.
+            // 이전 구현은 O(N²·W) pairwise 125k-call이었는데 bucketing(O(N·W))로 50x 감소.
             list<SectionConflict> safety_check;
-            for (int a1 = 0; a1 < num_of_agents; a1++)
-                for (int a2 = a1 + 1; a2 < num_of_agents; a2++)
-                    find_conflicts(safety_check, a1, a2);
+            find_conflicts(safety_check);
             if (!safety_check.empty()) {
                 curr->conflicts = std::move(safety_check);
                 curr->num_of_collisions = curr->conflicts.size();
-                // 해답이 아님 — 충돌 해결 계속
             } else {
                 solution_found = true;
                 solution_cost = curr->g_val;

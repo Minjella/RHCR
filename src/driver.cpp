@@ -98,11 +98,11 @@ MAPFSolver* set_solver(const BasicGraph& G, const boost::program_options::variab
 	
 }
 
-PBSSection* set_solver_section(const BasicGraph& G, const boost::program_options::variables_map& vm)
+MAPFSolver* set_solver_section(const BasicGraph& G, const boost::program_options::variables_map& vm)
 {
 	string solver_name = vm["single_agent_solver"].as<string>();
 	SingleAgentSolver* path_planner;
-	PBSSection* mapf_solver;
+	MAPFSolver* mapf_solver;
 	if (solver_name == "ASTAR")
 	{
 		path_planner = new StateTimeAStar();
@@ -110,7 +110,7 @@ PBSSection* set_solver_section(const BasicGraph& G, const boost::program_options
 	else if (solver_name == "SIPP")
 	{
 		path_planner = new SIPP();
-		
+
 	}
 	else
 	{
@@ -125,7 +125,6 @@ PBSSection* set_solver_section(const BasicGraph& G, const boost::program_options
 
 	if (solver_name == "PBS")
 	{
-		// pbs_section으로 교체 필요
 		PBSSection* pbs_section = new PBSSection(G, *path_planner, *section_path_planner);
 		pbs_section->lazyPriority = vm["lazyP"].as<bool>();
         auto prioritize_start = vm["prioritize_start"].as<bool>();
@@ -134,6 +133,14 @@ PBSSection* set_solver_section(const BasicGraph& G, const boost::program_options
         pbs_section->prioritize_start = prioritize_start;
         pbs_section->setRS(vm["CAT"].as<bool>(), prioritize_start);
 		mapf_solver = pbs_section;
+	}
+	else if (solver_name == "ECBS")
+	{
+		ECBSSection* ecbs_section = new ECBSSection(G, *path_planner, *section_path_planner);
+		ecbs_section->potential_function = vm["potential_function"].as<string>();
+		ecbs_section->potential_threshold = vm["potential_threshold"].as<double>();
+		ecbs_section->suboptimal_bound = vm["suboptimal_bound"].as<double>();
+		mapf_solver = ecbs_section;
 	}
 	else
 	{
@@ -259,7 +266,7 @@ int main(int argc, char** argv)
 		 if (!G.load_map(vm["map"].as<std::string>()))
 			 return -1;
 		 MAPFSolver* solver = set_solver(G, vm);
-		 PBSSection* solver_section = nullptr;
+		 MAPFSolver* solver_section = nullptr;
 		 if (vm["section"].as<bool>()){
 			std::cout << "make section solver?" << std::endl;
 			solver_section = set_solver_section(G, vm);

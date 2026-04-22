@@ -78,9 +78,17 @@ void ReservationSection::build(const std::vector<SectionPath*>& paths, const boo
             const auto& state = path[i];
             const auto& internal_paths = state.full_path; // copy 제거: reference 사용
 
-            // Cell Table Update
+            // Cell block update: direct bit-set into 2D bitmap (no hash).
             for (const auto& step : internal_paths) {
-                cell_table[make_cell_key(step.first, state.section_id, step.second)] = agent_id;
+                int t = step.first, c = step.second;
+                if (t >= (int)cell_blocked_mask.size())
+                    cell_blocked_mask.resize(t + 1);
+                auto& row = cell_blocked_mask[t];
+                if (state.section_id >= (int)row.size())
+                    row.resize(state.section_id + 1, 0u);
+                uint32_t prev = row[state.section_id];
+                row[state.section_id] |= (1u << c);
+                if (prev == 0u) dirty_cells.emplace_back(t, state.section_id);
             }
 
             // Section Timeline update
@@ -167,6 +175,7 @@ bool ReservationSection::is_cell_available(int time, int section_id, int cell_id
     if (it == cell_table.end()) {
         return true; // 아무도 없음 -> 통과 가능
     }
+    (void)it; // set으로 전환 후 value 비교 없음
 
     int other_agent_id = it->second;
     
@@ -328,9 +337,29 @@ const std::vector<SecInterval>& ReservationSection::get_safe_intervals(int secti
 
 bool ReservationSection::is_cell_safe(int time, int section_id, int cell_idx) const
 {
-    // High-level에서 이미 '나보다 우선순위 높은 애들'만 cell_table에 넣었음!
-    // 따라서 map에 key가 존재하기만 하면 무조건 충돌(막힘)임.
-    return cell_table.find(make_cell_key(time, section_id, cell_idx)) == cell_table.end();
+    // Bit-vector lookup: 2D array access + bitwise test. Grid-ECBS와 동일 패턴.
+    if (time < 0 || time >= (int)cell_blocked_mask.size()) return true;
+    const auto& row = cell_blocked_mask[time];
+    if (section_id < 0 || section_id >= (int)row.size()) return true;
+    return !(row[section_id] & (1u << cell_idx));
+}
+
+void ReservationSection::add_cell_constraint(int time, int section_id, int cell_idx)
+{
+    if (time < 0 || section_id < 0 || cell_idx < 0 || cell_idx >= 32) return;
+    if (time >= (int)cell_blocked_mask.size())
+        cell_blocked_mask.resize(time + 1);
+    auto& row = cell_blocked_mask[time];
+    if (section_id >= (int)row.size())
+        row.resize(section_id + 1, 0u);
+    uint32_t prev = row[section_id];
+    row[section_id] |= (1u << cell_idx);
+    if (prev == 0u) dirty_cells.emplace_back(time, section_id);
+}
+
+void ReservationSection::init_empty()
+{
+    clear();
 }
 
 // void ReservationSection::merge_intervals(std::list<SecInterval>& intervals) const {

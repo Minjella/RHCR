@@ -96,6 +96,8 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                                      int agent_id, int capacity, MapSystem* MapSys)
 {
     num_expanded = 0; num_generated = 0; runtime = 0;
+    // profiling timers는 ECBSSection이 reset 관리 (누적).
+    h_cache.clear();
     // std::cout << "🔑 [SIPP 시작] allNodes_table.size()=" << allNodes_table.size() 
     //       << " pool_index=" << pool_index << "\n";
     assert(allNodes_table.empty()); // 이게 터지면 이전 탐색 정리가 안 된 것
@@ -106,7 +108,15 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
     // std::cout << "📞 [find_path] agent=" << agent_id 
     //       << " | start_section=" << start_section_id
     //       << " | start_index=" << start_state.start_index << "\n";
-    double h_val = MapSys->compute_h_value(start_section_id, start_state.start_index, 0, goal_sections, goal_to_goal); 
+    auto cached_h = [&](int sec, int cell, int gid) -> double {
+        uint64_t key = ((uint64_t)sec << 20) | ((uint64_t)cell << 16) | (uint64_t)gid;
+        auto it = h_cache.find(key);
+        if (it != h_cache.end()) return it->second;
+        double v = MapSys->compute_h_value(sec, cell, gid, goal_sections, goal_to_goal);
+        h_cache.emplace(key, v);
+        return v;
+    };
+    double h_val = cached_h(start_section_id, start_state.start_index, 0);
 
     SecInterval start_interval = std::make_tuple(0, 0, 0);
     bool start_found = false;
@@ -266,7 +276,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                     else 
                     {
                         SectionState waypoint_state(goal_section_id, goal_index, -1, curr->s_state.timestep + dist_to_goal);
-                        double next_h_val = MapSys->compute_h_value(goal_section_id, goal_index, next_goal_id, goal_sections, goal_to_goal);
+                        double next_h_val = cached_h(goal_section_id, goal_index, next_goal_id);
                         
                         // ✨ [변경] new 대신 Object Pool 사용
                         auto waypoint_node = allocate_node();
@@ -333,7 +343,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                 double total_travel_cost = internal_cost + edge_cost;
 
                 int arrival_time = curr->s_state.timestep + total_travel_cost;
-                double next_h_val = MapSys->compute_h_value(next_section_id, next_start_index, curr->goal_id, goal_sections, goal_to_goal);
+                double next_h_val = cached_h(next_section_id, next_start_index, curr->goal_id);
                 if (next_h_val >= 999999) { // 도달 불가 휴리스틱 가지치기
                     continue;
                 }
@@ -408,7 +418,7 @@ SectionPath SIPPSection::run_section(const SectionState& start_state,
                     //             << " | h=" << next_h_val << "\n";
                     // }
 
-                    generate_node(interval, curr, next_section_id, next_start_index, curr_exit_index, 
+                    generate_node(interval, curr, next_section_id, next_start_index, curr_exit_index,
                                   rs, total_travel_cost, arrival_time, next_h_val, section_congestion);
                 }
             }
@@ -484,7 +494,7 @@ void SIPPSection::generate_node(const SecInterval& interval, SIPPSectionNode* cu
         }
     }
     
-    double g_val = curr->g_val + travel_cost + extra_wait_time; 
+    double g_val = curr->g_val + travel_cost + extra_wait_time;
     int next_conflicts = curr->conflicts + section_congestion;
     SectionState next_state(next_section_id, next_start_index, -1, timestep);
     SIPPSectionNode dummy_node(next_state, interval, curr->goal_id);
@@ -611,6 +621,8 @@ int SIPPSection::find_wait_list(int section_id, int start_index, int exit_index,
                                 std::vector<int>& wait_list, std::vector<pair<int, int>>& full_path,
                                 int circle_flag, bool build_path)
 {
+    // (Memoization 시도 결과: LL 노드마다 timestep이 다 달라서 cache miss 거의 100%.
+    // 효과 없음 → 제거.)
     if (build_path) {
         wait_list.clear();
         full_path.clear();
