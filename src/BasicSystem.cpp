@@ -709,9 +709,23 @@ void BasicSystem::solve_by_Section(MapSystem &mapSys)
     auto t_conv_end = clk::now();
     diag_wall_conversion_sec += std::chrono::duration<double>(t_conv_end - t_conv_start).count();
 
+    // Primary section solver gets a (possibly reduced) budget so hopeless
+    // calls fall back quickly instead of burning the full --cutoffTime
+    // before declaring failure. Controlled via RHCR_PRIMARY_BUDGET (seconds);
+    // default = full time_limit (no change in behavior).
+    int primary_budget = time_limit;
+    {
+        static int cached = -2;
+        if (cached == -2) {
+            const char* env = std::getenv("RHCR_PRIMARY_BUDGET");
+            cached = (env && *env) ? std::atoi(env) : -1;
+        }
+        if (cached > 0 && cached < time_limit) primary_budget = cached;
+    }
+
     // [DIAG] primary solver_section->run_section
     auto t_pri_start = clk::now();
-    bool sol = solver_section->run_section(start_sections, goal_sections, time_limit, &mapSys);
+    bool sol = solver_section->run_section(start_sections, goal_sections, primary_budget, &mapSys);
     auto t_pri_end = clk::now();
     double pri_sec = std::chrono::duration<double>(t_pri_end - t_pri_start).count();
     diag_wall_primary_sec += pri_sec;

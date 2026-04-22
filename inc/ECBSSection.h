@@ -1,7 +1,11 @@
 #pragma once
 #include "ECBSNodeSection.h"
 #include "MAPFSolver.h"
+#include <cstdint>
 #include <ctime>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 // Section-level ECBS (v2, clean rewrite).
 //
@@ -90,6 +94,25 @@ private:
     double focal_threshold = 0;
 
     MapSystem* current_mapsys = nullptr;
+
+    // Scratch buffers for find_conflicts (ported from PBSSection Opt B).
+    // Reused across calls; assign()/clear() preserves capacity.
+    std::vector<int> fc_sizes;
+    std::vector<int> fc_sec_idx;
+    std::vector<int> fc_sec_inside_idx;
+    std::unordered_set<uint64_t> fc_pair_reported;
+    std::unordered_map<uint32_t, std::vector<int>> fc_bucket;
+
+    // Incremental per-agent timestep-major (section_id, cell_idx) key cache
+    // for find_conflicts(list&, new_agent). Rebuilt lazily via
+    // refresh_keys_cache() (only rows whose paths[a] pointer changed since
+    // last sync) and eagerly via build_keys_for_agent(a) after find_path.
+    std::vector<uint32_t> fc_keys_flat;
+    std::vector<int> fc_keys_size;
+    std::vector<const SectionPath*> fc_cache_path_ptr;
+    int fc_W = 0;
+    void build_keys_for_agent(int a);
+    void refresh_keys_cache();
 
     // ---- High-level ----
     bool generate_root_node(MapSystem* mapsys);

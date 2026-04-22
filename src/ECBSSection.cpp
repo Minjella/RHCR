@@ -54,6 +54,9 @@ void ECBSSection::clear()
     best_node = nullptr;
     dummy_start = nullptr;
     current_mapsys = nullptr;
+
+    // Drop stale pointers from previous run_section — allNodes released above.
+    std::fill(fc_cache_path_ptr.begin(), fc_cache_path_ptr.end(), nullptr);
 }
 
 void ECBSSection::update_paths(ECBSNodeSection* curr)
@@ -164,52 +167,57 @@ void ECBSSection::find_conflicts(std::list<SectionConflict>& conflicts, int a1, 
 
 void ECBSSection::find_conflicts(std::list<SectionConflict>& conflicts)
 {
+    // Opt B (ported from PBSSection): reuse class-member scratch buffers to
+    // avoid per-call heap allocation of the sizes/section-index arrays and
+    // the bucket/pair_reported hash containers.
     clock_t t = clock();
     const int W = window + 1;
-    std::vector<int> sizes(num_of_agents, 0);
-    std::vector<int> sec_idx(num_of_agents, 0);
-    std::vector<int> sec_inside_idx(num_of_agents, 0);
+
+    fc_sizes.assign(num_of_agents, 0);
+    fc_sec_idx.assign(num_of_agents, 0);
+    fc_sec_inside_idx.assign(num_of_agents, 0);
 
     for (int a = 0; a < num_of_agents; a++)
         if (paths[a] != nullptr && !paths[a]->empty())
-            sizes[a] = std::min(W, paths[a]->back().timestep);
+            fc_sizes[a] = std::min(W, paths[a]->back().timestep);
 
-    std::unordered_set<uint64_t> pair_reported;
-    std::unordered_map<uint32_t, std::vector<int>> bucket;
-    bucket.reserve(num_of_agents * 2);
+    fc_pair_reported.clear();
+    for (auto& kv : fc_bucket) kv.second.clear();
+    if (fc_bucket.bucket_count() < (size_t)num_of_agents * 2)
+        fc_bucket.reserve(num_of_agents * 2);
 
     for (int ts = 0; ts < W; ts++)
     {
-        for (auto& kv : bucket) kv.second.clear();
+        for (auto& kv : fc_bucket) kv.second.clear();
 
         for (int a = 0; a < num_of_agents; a++)
         {
-            if (sizes[a] <= ts) continue;
+            if (fc_sizes[a] <= ts) continue;
             auto& path_a = *paths[a];
 
-            if (sec_idx[a] + 1 < (int)path_a.size() && path_a[sec_idx[a] + 1].timestep == ts)
+            if (fc_sec_idx[a] + 1 < (int)path_a.size() && path_a[fc_sec_idx[a] + 1].timestep == ts)
             {
-                sec_idx[a] += 1;
-                sec_inside_idx[a] = 0;
+                fc_sec_idx[a] += 1;
+                fc_sec_inside_idx[a] = 0;
             }
 
-            const auto& state = path_a[sec_idx[a]];
+            const auto& state = path_a[fc_sec_idx[a]];
             const auto& fp = state.full_path;
             if (fp.empty()) continue;
 
             int cell_idx;
-            if (sec_inside_idx[a] >= (int)fp.size()) cell_idx = fp.back().second;
-            else { cell_idx = fp[sec_inside_idx[a]].second; sec_inside_idx[a] += 1; }
+            if (fc_sec_inside_idx[a] >= (int)fp.size()) cell_idx = fp.back().second;
+            else { cell_idx = fp[fc_sec_inside_idx[a]].second; fc_sec_inside_idx[a] += 1; }
 
             const uint32_t key = ((uint32_t)state.section_id << 4) | (uint32_t)cell_idx;
 
-            auto& occ = bucket[key];
+            auto& occ = fc_bucket[key];
             for (int other : occ)
             {
                 int a1 = std::min(a, other);
                 int a2 = std::max(a, other);
                 uint64_t pkey = ((uint64_t)a1 << 32) | (uint32_t)a2;
-                if (pair_reported.insert(pkey).second)
+                if (fc_pair_reported.insert(pkey).second)
                     conflicts.emplace_back(a1, a2, state.section_id, cell_idx, ts, ConflictType::TILE_VERTEX);
             }
             occ.push_back(a);
@@ -219,71 +227,96 @@ void ECBSSection::find_conflicts(std::list<SectionConflict>& conflicts)
     runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
 }
 
+void ECBSSection::build_keys_for_agent(int a)
+{
+    if (fc_W <= 0) return;
+    const int base = a * fc_W;
+    for (int i = 0; i < fc_W; i++) fc_keys_flat[base + i] = UINT32_MAX;
+    fc_keys_size[a] = 0;
+    if (a < 0 || a >= num_of_agents) return;
+    if (paths[a] == nullptr || paths[a]->empty()) return;
+    auto& path_a = *paths[a];
+    const int size_a = std::min(fc_W, path_a.back().timestep);
+    if (size_a <= 0) return;
+    int si = 0, sii = 0;
+    for (int ts = 0; ts < size_a; ts++)
+    {
+        if (si + 1 < (int)path_a.size() && path_a[si + 1].timestep == ts) { si += 1; sii = 0; }
+        const auto& state = path_a[si];
+        const auto& fp = state.full_path;
+        if (fp.empty()) continue;
+        int cell_idx;
+        if (sii >= (int)fp.size()) cell_idx = fp.back().second;
+        else { cell_idx = fp[sii].second; sii += 1; }
+        fc_keys_flat[base + ts] = ((uint32_t)state.section_id << 4) | (uint32_t)cell_idx;
+    }
+    fc_keys_size[a] = size_a;
+}
+
+void ECBSSection::refresh_keys_cache()
+{
+    const int W = window + 1;
+    const bool layout_stale =
+        (fc_W != W) ||
+        ((int)fc_keys_size.size() != num_of_agents) ||
+        (fc_keys_flat.size() != (size_t)num_of_agents * (size_t)W);
+    if (layout_stale)
+    {
+        fc_W = W;
+        fc_keys_flat.assign((size_t)num_of_agents * fc_W, UINT32_MAX);
+        fc_keys_size.assign(num_of_agents, 0);
+        fc_cache_path_ptr.assign(num_of_agents, nullptr);
+    }
+    for (int a = 0; a < num_of_agents; a++)
+    {
+        const SectionPath* cur = paths[a];
+        if (fc_cache_path_ptr[a] != cur)
+        {
+            build_keys_for_agent(a);
+            fc_cache_path_ptr[a] = cur;
+        }
+    }
+}
+
 void ECBSSection::find_conflicts(std::list<SectionConflict>& new_conflicts, int new_agent)
 {
+    // Opt C-v2 (ported): use the per-agent key cache (fc_keys_flat) instead of
+    // re-traversing each agent's SectionPath on every call. Caller must have
+    // ensured the cache is fresh (refresh_keys_cache() on generate_child entry,
+    // build_keys_for_agent(a) after find_path(a) succeeds).
     clock_t t = clock();
-    if (paths[new_agent] == nullptr || paths[new_agent]->empty())
+
+    if (fc_W <= 0 || new_agent < 0 || new_agent >= num_of_agents)
     {
         runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
         return;
     }
-
-    const int W = window + 1;
-    const int size_new = std::min(W, paths[new_agent]->back().timestep);
+    const int size_new = fc_keys_size[new_agent];
     if (size_new <= 0)
     {
         runtime_detect_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
         return;
     }
 
-    std::vector<uint32_t> new_keys(size_new, UINT32_MAX);
-    std::vector<int> new_secs(size_new, -1);
-    std::vector<int> new_cells(size_new, -1);
-    {
-        auto& path_new = *paths[new_agent];
-        int si = 0, sii = 0;
-        for (int ts = 0; ts < size_new; ts++)
-        {
-            if (si + 1 < (int)path_new.size() && path_new[si + 1].timestep == ts) { si += 1; sii = 0; }
-            const auto& state = path_new[si];
-            const auto& fp = state.full_path;
-            if (fp.empty()) continue;
-            int cell_idx;
-            if (sii >= (int)fp.size()) cell_idx = fp.back().second;
-            else { cell_idx = fp[sii].second; sii += 1; }
-            new_keys[ts] = ((uint32_t)state.section_id << 4) | (uint32_t)cell_idx;
-            new_secs[ts] = state.section_id;
-            new_cells[ts] = cell_idx;
-        }
-    }
+    const uint32_t* new_row = fc_keys_flat.data() + (size_t)new_agent * fc_W;
 
     for (int a = 0; a < num_of_agents; a++)
     {
-        if (a == new_agent || paths[a] == nullptr || paths[a]->empty()) continue;
-
-        const int size_a = std::min(W, paths[a]->back().timestep);
+        if (a == new_agent) continue;
+        const int size_a = fc_keys_size[a];
         const int max_ts = std::min(size_a, size_new);
         if (max_ts <= 0) continue;
-
-        auto& path_a = *paths[a];
-        int si = 0, sii = 0;
-
+        const uint32_t* a_row = fc_keys_flat.data() + (size_t)a * fc_W;
         for (int ts = 0; ts < max_ts; ts++)
         {
-            if (si + 1 < (int)path_a.size() && path_a[si + 1].timestep == ts) { si += 1; sii = 0; }
-            const auto& state = path_a[si];
-            const auto& fp = state.full_path;
-            if (fp.empty()) continue;
-            int cell_idx;
-            if (sii >= (int)fp.size()) cell_idx = fp.back().second;
-            else { cell_idx = fp[sii].second; sii += 1; }
-
-            const uint32_t key = ((uint32_t)state.section_id << 4) | (uint32_t)cell_idx;
-            if (new_keys[ts] != UINT32_MAX && key == new_keys[ts])
+            const uint32_t k = a_row[ts];
+            if (k == new_row[ts] && k != UINT32_MAX)
             {
-                int a1 = std::min(new_agent, a);
-                int a2 = std::max(new_agent, a);
-                new_conflicts.emplace_back(a1, a2, new_secs[ts], new_cells[ts], ts, ConflictType::TILE_VERTEX);
+                const int a1 = std::min(new_agent, a);
+                const int a2 = std::max(new_agent, a);
+                const int section_id = (int)(k >> 4);
+                const int cell_idx = (int)(k & 0xFu);
+                new_conflicts.emplace_back(a1, a2, section_id, cell_idx, ts, ConflictType::TILE_VERTEX);
                 break;
             }
         }
@@ -492,8 +525,19 @@ bool ECBSSection::generate_child(ECBSNodeSection* node, ECBSNodeSection* parent,
         }
     }
 
+    // Bring the per-agent key cache into sync with the current paths[] before
+    // the replan (this catches pointer changes since the last call — e.g. a
+    // sibling's generate_child that modified paths[] and was then rolled back).
+    refresh_keys_cache();
+
     for (int a : to_replan)
+    {
         if (!find_path(node, a, mapsys)) return false;
+        // find_path updated paths[a]; refresh the cache row so the subsequent
+        // find_conflicts sees the new path.
+        build_keys_for_agent(a);
+        fc_cache_path_ptr[a] = paths[a];
+    }
 
     find_conflicts(parent->conflicts, node->conflicts, to_replan);
     node->num_of_collisions = (int)node->conflicts.size();
