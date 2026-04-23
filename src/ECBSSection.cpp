@@ -336,10 +336,32 @@ void ECBSSection::find_conflicts(const std::list<SectionConflict>& old_conflicts
 void ECBSSection::choose_conflict(ECBSNodeSection& node) const
 {
     if (node.conflicts.empty()) return;
-    // 가장 이른 timestep 선택 (표준 ECBS 기본).
-    node.conflict = node.conflicts.front();
-    for (const auto& c : node.conflicts)
-        if (c.timestep < node.conflict.timestep) node.conflict = c;
+
+    // Primary key: earliest timestep (standard ECBS). Tiebreak: "most
+    // tangled" pair — agents that appear in more other conflicts in the
+    // same node. Resolving a tangled pair tends to cascade through the
+    // priority/constraint structure and prune more future forks.
+    // (Same heuristic as PBSSection Opt 2.)
+    std::unordered_map<int, int> agent_deg;
+    agent_deg.reserve(node.conflicts.size() * 2);
+    for (const auto& c : node.conflicts) {
+        agent_deg[c.agent1]++;
+        agent_deg[c.agent2]++;
+    }
+
+    const SectionConflict* picked = &node.conflicts.front();
+    int best_ts = picked->timestep;
+    int best_score = agent_deg[picked->agent1] + agent_deg[picked->agent2];
+    for (const auto& c : node.conflicts) {
+        const int score = agent_deg[c.agent1] + agent_deg[c.agent2];
+        if (c.timestep < best_ts ||
+            (c.timestep == best_ts && score > best_score)) {
+            best_ts = c.timestep;
+            best_score = score;
+            picked = &c;
+        }
+    }
+    node.conflict = *picked;
 }
 
 // --- Entry-time helper ------------------------------------------------------
@@ -404,11 +426,38 @@ bool ECBSSection::find_path(ECBSNodeSection* node, int agent, MapSystem* mapsys)
     // is_cell_safe 체크로 해당 time에 해당 entry cell 진입 자동 차단.
     // Start-section 충돌이면 resolve_conflict가 conflict cell/time 그대로
     // 넣었을 것 — 동일 로직으로 cell 차단됨.
+    // RHCR_ECBS_CONSTRAINT_MODE:
+    //   0 (default) cell-specific (current behavior)
+    //   1           section entry cells (0,2,6,8) — 3x3 section 4-entry block
+    //   2           whole section (all 9 cells) — most aggressive, often
+    //               over-restricts and tanks primary success rate.
+    // The cell-level start-section fallback (cell_idx==-1 sentinel convention
+    // is not used here — resolve_for_agent keeps a real cell_idx for that
+    // fallback) is unaffected: it uses add_cell_constraint.
+    static int constraint_mode = -1;
+    if (constraint_mode < 0) {
+        const char* e = std::getenv("RHCR_ECBS_CONSTRAINT_MODE");
+        constraint_mode = (e && *e) ? std::atoi(e) : 0;
+    }
+
     rs.init_empty();
     for (const auto& c : my_constraints)
     {
-        if (!c.positive)
+        if (c.positive) {
+            // Disjoint splitting의 positive 쪽: "agent가 이 time에 이 section
+            // 안에 있다면 반드시 cell_idx에 있어야 함". 이걸 구현하려면 section
+            // 내 cell_idx를 제외한 모든 cell을 negative로 막으면 됨. SIPP 수정
+            // 불필요 (기존 is_cell_safe만 사용).
+            rs.add_section_complement_constraint(c.timestep, c.section_id, c.cell_idx);
+            continue;
+        }
+        if (constraint_mode == 2) {
+            rs.add_section_constraint(c.timestep, c.section_id);
+        } else if (constraint_mode == 1) {
+            rs.add_section_entry_constraint(c.timestep, c.section_id);
+        } else {
             rs.add_cell_constraint(c.timestep, c.section_id, c.cell_idx);
+        }
     }
     runtime_rt += (double)(std::clock() - t) / CLOCKS_PER_SEC;
 
@@ -475,8 +524,52 @@ void ECBSSection::resolve_for_agent(int agent, const SectionConflict& c, ECBSNod
 
 void ECBSSection::resolve_conflict(const SectionConflict& c, ECBSNodeSection* n1, ECBSNodeSection* n2)
 {
-    resolve_for_agent(c.agent1, c, n1);
-    resolve_for_agent(c.agent2, c, n2);
+    // Default (and historical) branching: both children get a negative
+    // constraint, one for a1 and one for a2. Agent whose constraint is
+    // added replans to avoid the (section,cell,time). Easy for the agent
+    // to bypass via a different entry cell → CT stagnates when entry cells
+    // are interchangeable.
+    //
+    // Optional disjoint splitting (RHCR_ECBS_DISJOINT=1):
+    //   n1: "a1 NOT at (section, cell, time)" (negative, as before)
+    //   n2: "a1 MUST be at (section, cell, time)" (positive)
+    // Positive forces every OTHER agent (including a2) whose current plan
+    // puts them at that cell/time to replan. Stronger branching step.
+    static int disjoint = -1;
+    if (disjoint < 0) {
+        const char* e = std::getenv("RHCR_ECBS_DISJOINT");
+        disjoint = (e && *e && e[0] != '0') ? 1 : 0;
+    }
+
+    if (disjoint)
+    {
+        // Both children impose something on a1. Fork on agent1 always;
+        // alternative heuristics (most-constrained agent) could pick either.
+        resolve_for_agent(c.agent1, c, n1);
+
+        const SectionState* st = find_state_at_time(c.agent1, c.timestep);
+        const bool start_sec = (st != nullptr) && (st->timestep == 0) &&
+                               c.agent1 >= 0 &&
+                               c.agent1 < (int)start_sections.size() &&
+                               start_sections[c.agent1].section_id == c.section_id;
+        if (st != nullptr && !start_sec)
+        {
+            // Positive section-entry constraint for a1.
+            n2->constraints.emplace_back(c.agent1, c.section_id, st->start_index,
+                                         st->timestep, /*positive=*/true);
+        }
+        else
+        {
+            // Start-section fallback: positive at conflict cell/time.
+            n2->constraints.emplace_back(c.agent1, c.section_id, c.local_index,
+                                         c.timestep, /*positive=*/true);
+        }
+    }
+    else
+    {
+        resolve_for_agent(c.agent1, c, n1);
+        resolve_for_agent(c.agent2, c, n2);
+    }
 }
 
 bool ECBSSection::generate_child(ECBSNodeSection* node, ECBSNodeSection* parent, MapSystem* mapsys)
@@ -683,6 +776,15 @@ bool ECBSSection::run_section(const vector<SectionState>& start_sections_in,
         section_path_planner->prioritize_start = false;
     }
 
+    // Disjoint splitting flag mirrors RHCR_ECBS_DISJOINT. Needs to be set on
+    // the instance (not just in resolve_conflict) so collect_constraints
+    // propagates positive constraints to other agents as negative — otherwise
+    // the positive branch can never force others out of the protected cell.
+    {
+        const char* e = std::getenv("RHCR_ECBS_DISJOINT");
+        disjoint_splitting = (e && *e && e[0] != '0');
+    }
+
     if (!generate_root_node(mapsys))
     {
         runtime = (double)(std::clock() - start_time) / CLOCKS_PER_SEC;
@@ -700,6 +802,29 @@ bool ECBSSection::run_section(const vector<SectionState>& start_sections_in,
     const int hl_iter_limit = 100000;
     int hl_iter = 0;
 
+    // Diagnostics for failure-mode classification. Env RHCR_ECBS_DIAG=1
+    // enables a printed trajectory of best-so-far (min-collision) node.
+    const bool diag_on = [](){
+        const char* e = std::getenv("RHCR_ECBS_DIAG");
+        return e && *e && e[0] != '0';
+    }();
+    int diag_min_col = dummy_start->num_of_collisions;
+    int diag_min_col_iter = 0;
+    int diag_last_improve_iter = 0;
+    int diag_reinsert_count = 0;
+    int diag_safety_fires = 0;
+
+    // Stall-based early-exit. Profiling of 6/100 failing calls on w=5 seed=0
+    // showed min-collision node reached within first 200 iterations, then 53k+
+    // iterations of zero improvement before timeout. Treat that as hopeless
+    // and fall back instead of burning the full time budget.
+    // Env RHCR_ECBS_STALL_LIMIT overrides; default 5000 (tunable).
+    static int stall_limit = -1;
+    if (stall_limit < 0) {
+        const char* e = std::getenv("RHCR_ECBS_STALL_LIMIT");
+        stall_limit = (e && *e) ? std::atoi(e) : 5000;
+    }
+
     while (!open_list.empty() && !solution_found)
     {
         if (++hl_iter > hl_iter_limit) break;
@@ -712,6 +837,33 @@ bool ECBSSection::run_section(const vector<SectionState>& start_sections_in,
             break;
         }
 
+        // Stall-based early-exit: if min-collision has not improved for
+        // stall_limit iterations AND we have some baseline (not root),
+        // declare failure. Skip when still in early phase (hl_iter <
+        // stall_limit) so short searches can complete normally.
+        if (stall_limit > 0 &&
+            hl_iter > stall_limit &&
+            (hl_iter - diag_last_improve_iter) > stall_limit)
+        {
+            solution_cost = -1;
+            solution_found = false;
+            break;
+        }
+
+        if (diag_on && (hl_iter % 2000 == 0))
+        {
+            std::cout << "[ECBSDIAG] iter=" << hl_iter
+                      << " t=" << runtime
+                      << "s open=" << open_list.size()
+                      << " focal=" << focal_list.size()
+                      << " min_f=" << min_f_val
+                      << " min_col=" << diag_min_col
+                      << " at_iter=" << diag_min_col_iter
+                      << " last_improve=" << diag_last_improve_iter
+                      << " reinsert=" << diag_reinsert_count
+                      << std::endl;
+        }
+
         ECBSNodeSection* curr = pop_node();
         update_paths(curr);
 
@@ -722,6 +874,7 @@ bool ECBSSection::run_section(const vector<SectionState>& start_sections_in,
             curr->window = window;
             curr->num_of_collisions = (int)curr->conflicts.size();
             reinsert_node(curr);
+            diag_reinsert_count++;
             continue;
         }
 
@@ -737,6 +890,7 @@ bool ECBSSection::run_section(const vector<SectionState>& start_sections_in,
                 curr->conflicts = std::move(safety);
                 curr->num_of_collisions = (int)curr->conflicts.size();
                 reinsert_node(curr);
+                diag_safety_fires++;
                 continue;
             }
             solution_found = true;
@@ -751,6 +905,13 @@ bool ECBSSection::run_section(const vector<SectionState>& start_sections_in,
             (curr->conflict.timestep == best_node->conflict.timestep &&
              curr->f_val < best_node->f_val))
             best_node = curr;
+
+        if (curr->num_of_collisions < diag_min_col)
+        {
+            diag_min_col = curr->num_of_collisions;
+            diag_min_col_iter = hl_iter;
+            diag_last_improve_iter = hl_iter;
+        }
 
         HL_num_expanded++;
         curr->time_expanded = HL_num_expanded;
@@ -787,6 +948,24 @@ bool ECBSSection::run_section(const vector<SectionState>& start_sections_in,
 
     runtime = (double)(std::clock() - start_time) / CLOCKS_PER_SEC;
     get_solution();
+
+    if (diag_on)
+    {
+        std::cout << "[ECBSDIAG-END] solved=" << solution_found
+                  << " iters=" << hl_iter
+                  << " t=" << runtime << "s"
+                  << " HL_exp=" << HL_num_expanded
+                  << " HL_gen=" << HL_num_generated
+                  << " LL_exp=" << LL_num_expanded
+                  << " min_col=" << diag_min_col
+                  << " at_iter=" << diag_min_col_iter
+                  << " last_improve=" << diag_last_improve_iter
+                  << " stalled_iters=" << (hl_iter - diag_last_improve_iter)
+                  << " reinsert=" << diag_reinsert_count
+                  << " safety_fires=" << diag_safety_fires
+                  << " final_best_col=" << (best_node ? best_node->num_of_collisions : -1)
+                  << std::endl;
+    }
 
     if (solution_found && !validate_solution())
     {

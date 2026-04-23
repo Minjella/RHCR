@@ -357,6 +357,51 @@ void ReservationSection::add_cell_constraint(int time, int section_id, int cell_
     if (prev == 0u) dirty_cells.emplace_back(time, section_id);
 }
 
+void ReservationSection::add_section_constraint(int time, int section_id)
+{
+    if (time < 0 || section_id < 0) return;
+    if (time >= (int)cell_blocked_mask.size())
+        cell_blocked_mask.resize(time + 1);
+    auto& row = cell_blocked_mask[time];
+    if (section_id >= (int)row.size())
+        row.resize(section_id + 1, 0u);
+    uint32_t prev = row[section_id];
+    // 9-cell section: bits 0..8. 더 큰 section이 생기면 kMaxCells만큼 확장 필요.
+    row[section_id] |= 0x1FFu;
+    if (prev == 0u) dirty_cells.emplace_back(time, section_id);
+}
+
+void ReservationSection::add_section_entry_constraint(int time, int section_id)
+{
+    // 3x3 section entry cells: SortingGrid 기준 DIR_WEST=0, DIR_NORTH=2,
+    // DIR_SOUTH=6, DIR_EAST=8 (Section.cpp entry_cells_by_dir 참고).
+    // bitmask: bits 0, 2, 6, 8 → 0x145
+    if (time < 0 || section_id < 0) return;
+    if (time >= (int)cell_blocked_mask.size())
+        cell_blocked_mask.resize(time + 1);
+    auto& row = cell_blocked_mask[time];
+    if (section_id >= (int)row.size())
+        row.resize(section_id + 1, 0u);
+    uint32_t prev = row[section_id];
+    row[section_id] |= 0x145u;
+    if (prev == 0u) dirty_cells.emplace_back(time, section_id);
+}
+
+void ReservationSection::add_section_complement_constraint(int time, int section_id, int cell_idx)
+{
+    // 9-cell section 기준 bits 0..8 중 cell_idx를 제외한 전부 차단.
+    // mask = 0x1FF ^ (1 << cell_idx).
+    if (time < 0 || section_id < 0 || cell_idx < 0 || cell_idx >= 9) return;
+    if (time >= (int)cell_blocked_mask.size())
+        cell_blocked_mask.resize(time + 1);
+    auto& row = cell_blocked_mask[time];
+    if (section_id >= (int)row.size())
+        row.resize(section_id + 1, 0u);
+    uint32_t prev = row[section_id];
+    row[section_id] |= (0x1FFu ^ (1u << cell_idx));
+    if (prev == 0u) dirty_cells.emplace_back(time, section_id);
+}
+
 void ReservationSection::init_empty()
 {
     clear();

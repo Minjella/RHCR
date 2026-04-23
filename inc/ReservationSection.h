@@ -88,6 +88,25 @@ class ReservationSection {
         // 해당 agent의 low-level search 직전에만 호출하고, clear() / init_empty()로 되돌린다.
         void add_cell_constraint(int time, int section_id, int cell_idx);
 
+        // ECBSSection 강화용: 해당 time에 section 내 모든 cell을 차단한다.
+        // 단일 진입 cell 차단(add_cell_constraint)만으로는 다른 진입 cell로 우회가
+        // 쉬워 CT 수렴이 느리다. 섹션 전체를 막으면 agent는 해당 time에 이
+        // section에 "존재" 자체가 불가능해 retiming 또는 다른 route 강제.
+        // 9-cell section 기준으로 비트 0~8을 모두 세팅.
+        void add_section_constraint(int time, int section_id);
+
+        // 3x3 section의 4 corner entry cells (0, 2, 6, 8)만 차단.
+        // add_section_constraint보다 덜 제약 (내부 cell 1,3,4,5,7엔 머물 수 있음)
+        // 이지만 해당 time에 섹션 진입 경로를 전부 막아 retiming을 유도.
+        void add_section_entry_constraint(int time, int section_id);
+
+        // Positive-constraint 구현: section 안에서 cell_idx를 제외한 모든 cell을
+        // 차단. SIPP 입장에서는 여전히 negative (cell_blocked_mask 기반) 이지만,
+        // 의미적으로 "agent가 해당 time에 이 section에 있으면 반드시 cell_idx에 있어야 함".
+        // 이걸 negative("cell_idx에 없어야 함") 쌍과 함께 쓰면 표준 CBS disjoint
+        // splitting이 된다 (positive constraint의 SIPP 확장 없이도 완전성 유지).
+        void add_section_complement_constraint(int time, int section_id, int cell_idx);
+
         // Pure-CBS용 empty 초기화. 모든 테이블을 비우고 add_cell_constraint로만 제약을 주입.
         void init_empty();
 };
