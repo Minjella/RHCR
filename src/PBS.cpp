@@ -1,6 +1,8 @@
 #include "PBS.h"
 #include <ctime>
 #include <iostream>
+#include <limits>
+#include <unordered_map>
 #include "PathTable.h"
 
 
@@ -246,18 +248,27 @@ void PBS::choose_conflict(PBSNode &node)
 
     return;*/
 
-	// choose the earliest
-    for (auto conflict : node.conflicts)
-    {
-        /*int a1 = std::get<0>(*conflict);
-        int a2 = std::get<1>(*conflict);
-        if (goal_locations[a1] == goal_locations[a2])
-        {
-            node.conflict = conflict;
-            return;
-        }*/
-        if (std::get<4>(conflict) < std::get<4>(node.conflict))
-            node.conflict = conflict;
+    // Port from PBSSection: earliest-ts primary + "most tangled" tiebreak.
+    // Score each conflict by agent_deg[a1] + agent_deg[a2] (agent degree in the
+    // conflict graph). At the same earliest ts, resolving the most tangled pair
+    // cascades further via priority edges. Uses ALL conflicts (including nogood)
+    // to preserve the baseline's subsequent nogood-override behavior.
+    std::unordered_map<int, int> agent_deg;
+    agent_deg.reserve(node.conflicts.size() * 2);
+    for (const auto& c : node.conflicts) {
+        agent_deg[std::get<0>(c)]++;
+        agent_deg[std::get<1>(c)]++;
+    }
+    int best_ts = std::numeric_limits<int>::max();
+    int best_score = -1;
+    for (const auto& c : node.conflicts) {
+        const int ts = std::get<4>(c);
+        const int score = agent_deg[std::get<0>(c)] + agent_deg[std::get<1>(c)];
+        if (ts < best_ts || (ts == best_ts && score > best_score)) {
+            best_ts = ts;
+            best_score = score;
+            node.conflict = c;
+        }
     }
     node.earliest_collision = std::get<4>(node.conflict);
 
@@ -750,8 +761,26 @@ bool PBS::run(const vector<State>& starts,
         {
             if (n[0] != nullptr && n[1] != nullptr)
             {
-                if (n[0]->f_val < n[1]->f_val ||
-                    (n[0]->f_val == n[1]->f_val && n[0]->num_of_collisions < n[1]->num_of_collisions))
+                // Port from PBSSection (Opt 3 Variant E): DFS pops from the back,
+                // so the child pushed LAST is expanded first. Use num_collisions
+                // as primary key ONLY when |Δc| >= 2; otherwise fall back to
+                // f_val primary / collisions tiebreak (original RHCR ordering).
+                // A pure collisions-primary rule destabilizes tight windows;
+                // f_val is gentler when children are close.
+                const int c0 = n[0]->num_of_collisions;
+                const int c1 = n[1]->num_of_collisions;
+                const int dc = c0 > c1 ? c0 - c1 : c1 - c0;
+                const int kCollisionMargin = 2;
+
+                bool prefer_n0;
+                if (dc >= kCollisionMargin) {
+                    prefer_n0 = (c0 < c1);
+                } else {
+                    prefer_n0 = (n[0]->f_val < n[1]->f_val ||
+                                 (n[0]->f_val == n[1]->f_val && c0 < c1));
+                }
+
+                if (prefer_n0)
                 {
                     push_node(n[1]);
                     push_node(n[0]);
