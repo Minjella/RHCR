@@ -217,6 +217,18 @@ void PBS::remove_conflicts(list<Conflict>& conflicts, int excluded_agent)
     runtime_copy_conflicts += (double)(std::clock() - t) / CLOCKS_PER_SEC;
 }
 
+// Runtime toggle for PBS algorithmic opts (tangled tiebreak + Variant-E fork).
+// Default ON (matches commit 678d227 behavior). Set RHCR_PBS_OPTS=0 to revert
+// to the stock RHCR PBS behavior — used for the engineering ablation (PBS_pure).
+static int pbs_opts_enabled() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* env = std::getenv("RHCR_PBS_OPTS");
+        cached = (env && std::atoi(env) == 0) ? 0 : 1;
+    }
+    return cached;
+}
+
 void PBS::choose_conflict(PBSNode &node)
 {
     clock_t t = clock();
@@ -225,52 +237,39 @@ void PBS::choose_conflict(PBSNode &node)
 
     node.conflict = node.conflicts.front();
 
-
-	/*vector<int> lower_nodes(num_of_agents, -1);
-	 * double product = -1;
-    for (auto conflict : node.conflicts)
-    {
-        int a1 = std::get<0>(*conflict);
-        int a2 = std::get<1>(*conflict);
-        node.priorities.update_number_of_lower_nodes(lower_nodes, a1);
-        node.priorities.update_number_of_lower_nodes(lower_nodes, a2);
-        double new_product = (lower_nodes[a1] + 0.01) * (lower_nodes[a2] + 0.01);
-        if (new_product > product)
-        {
-            node.conflict = conflict;
-            product = new_product;
+    if (pbs_opts_enabled()) {
+        // Port from PBSSection: earliest-ts primary + "most tangled" tiebreak.
+        // Score each conflict by agent_deg[a1] + agent_deg[a2] (agent degree in
+        // the conflict graph). At the same earliest ts, resolving the most
+        // tangled pair cascades further via priority edges. Uses ALL conflicts
+        // (including nogood) to preserve the baseline's subsequent
+        // nogood-override behavior.
+        std::unordered_map<int, int> agent_deg;
+        agent_deg.reserve(node.conflicts.size() * 2);
+        for (const auto& c : node.conflicts) {
+            agent_deg[std::get<0>(c)]++;
+            agent_deg[std::get<1>(c)]++;
         }
-        else if (new_product == product && std::get<4>(*conflict) < std::get<4>(*node.conflict)) // choose the earliest
-        {
-            node.conflict = conflict;
+        int best_ts = std::numeric_limits<int>::max();
+        int best_score = -1;
+        for (const auto& c : node.conflicts) {
+            const int ts = std::get<4>(c);
+            const int score = agent_deg[std::get<0>(c)] + agent_deg[std::get<1>(c)];
+            if (ts < best_ts || (ts == best_ts && score > best_score)) {
+                best_ts = ts;
+                best_score = score;
+                node.conflict = c;
+            }
         }
-    }
-
-    return;*/
-
-    // Port from PBSSection: earliest-ts primary + "most tangled" tiebreak.
-    // Score each conflict by agent_deg[a1] + agent_deg[a2] (agent degree in the
-    // conflict graph). At the same earliest ts, resolving the most tangled pair
-    // cascades further via priority edges. Uses ALL conflicts (including nogood)
-    // to preserve the baseline's subsequent nogood-override behavior.
-    std::unordered_map<int, int> agent_deg;
-    agent_deg.reserve(node.conflicts.size() * 2);
-    for (const auto& c : node.conflicts) {
-        agent_deg[std::get<0>(c)]++;
-        agent_deg[std::get<1>(c)]++;
-    }
-    int best_ts = std::numeric_limits<int>::max();
-    int best_score = -1;
-    for (const auto& c : node.conflicts) {
-        const int ts = std::get<4>(c);
-        const int score = agent_deg[std::get<0>(c)] + agent_deg[std::get<1>(c)];
-        if (ts < best_ts || (ts == best_ts && score > best_score)) {
-            best_ts = ts;
-            best_score = score;
-            node.conflict = c;
+        node.earliest_collision = std::get<4>(node.conflict);
+    } else {
+        // Stock RHCR PBS: earliest-ts only, no tiebreak.
+        for (auto conflict : node.conflicts) {
+            if (std::get<4>(conflict) < std::get<4>(node.conflict))
+                node.conflict = conflict;
         }
+        node.earliest_collision = std::get<4>(node.conflict);
     }
-    node.earliest_collision = std::get<4>(node.conflict);
 
     // choose the pair of agents with smaller indices
     /*for (auto conflict : node.conflicts)
@@ -761,23 +760,30 @@ bool PBS::run(const vector<State>& starts,
         {
             if (n[0] != nullptr && n[1] != nullptr)
             {
-                // Port from PBSSection (Opt 3 Variant E): DFS pops from the back,
-                // so the child pushed LAST is expanded first. Use num_collisions
-                // as primary key ONLY when |Δc| >= 2; otherwise fall back to
-                // f_val primary / collisions tiebreak (original RHCR ordering).
-                // A pure collisions-primary rule destabilizes tight windows;
-                // f_val is gentler when children are close.
-                const int c0 = n[0]->num_of_collisions;
-                const int c1 = n[1]->num_of_collisions;
-                const int dc = c0 > c1 ? c0 - c1 : c1 - c0;
-                const int kCollisionMargin = 2;
-
                 bool prefer_n0;
-                if (dc >= kCollisionMargin) {
-                    prefer_n0 = (c0 < c1);
+                if (pbs_opts_enabled()) {
+                    // Port from PBSSection (Opt 3 Variant E): DFS pops from the
+                    // back, so the child pushed LAST is expanded first. Use
+                    // num_collisions as primary key ONLY when |Δc| >= 2;
+                    // otherwise fall back to f_val primary / collisions tiebreak
+                    // (original RHCR ordering). A pure collisions-primary rule
+                    // destabilizes tight windows; f_val is gentler when children
+                    // are close.
+                    const int c0 = n[0]->num_of_collisions;
+                    const int c1 = n[1]->num_of_collisions;
+                    const int dc = c0 > c1 ? c0 - c1 : c1 - c0;
+                    const int kCollisionMargin = 2;
+
+                    if (dc >= kCollisionMargin) {
+                        prefer_n0 = (c0 < c1);
+                    } else {
+                        prefer_n0 = (n[0]->f_val < n[1]->f_val ||
+                                     (n[0]->f_val == n[1]->f_val && c0 < c1));
+                    }
                 } else {
+                    // Stock RHCR PBS: f_val primary / collisions tiebreak.
                     prefer_n0 = (n[0]->f_val < n[1]->f_val ||
-                                 (n[0]->f_val == n[1]->f_val && c0 < c1));
+                                 (n[0]->f_val == n[1]->f_val && n[0]->num_of_collisions < n[1]->num_of_collisions));
                 }
 
                 if (prefer_n0)
