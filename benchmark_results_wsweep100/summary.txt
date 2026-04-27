@@ -1,0 +1,139 @@
+w-sweep (100 seeds): 3 solvers x 4 windows
+m=500  sim_time=5000  subopt(ECBS)=1.1  BEST_BUDGET=10000
+Total wall: 21336.8s (5.93 h)
+
+=== ECBS_baseline w=5 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  73877.3400  std=  185.2307  min=73320.0000  max=74242.0000
+    throughput / step            mean=     14.7755  std=    0.0370  min=   14.6640  max=   14.8484
+    end-to-end wall (s)          mean=     28.8739  std=    3.2042  min=   26.4329  max=   53.2764
+    Σ solver runtime (s)         mean=     25.1677  std=    3.1728  min=   22.9237  max=   49.4377
+    max per-call (s)             mean=      0.5005  std=    3.1045  min=    0.0342  max=   26.6455
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean=  90280.8300  std=45306.3003  min=80599.0000  max=475073.0000
+    Σ LL expanded                mean=20603327.7400  std=1662526.9208  min=20083862.0000  max=35817795.0000
+
+=== ECBS_baseline w=10 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  75030.5000  std=  206.0889  min=74388.0000  max=75474.0000
+    throughput / step            mean=     15.0061  std=    0.0412  min=   14.8776  max=   15.0948
+    end-to-end wall (s)          mean=     40.2146  std=    0.7616  min=   38.5867  max=   42.1565
+    Σ solver runtime (s)         mean=     36.1713  std=    0.7316  min=   34.7024  max=   37.8895
+    max per-call (s)             mean=      0.0794  std=    0.0894  min=    0.0469  max=    0.8406
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean=  81266.1900  std= 1642.2080  min=76856.0000  max=86711.0000
+    Σ LL expanded                mean=20992362.3700  std=131236.6620  min=20754315.0000  max=21583241.0000
+
+=== ECBS_baseline w=20 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  75473.5500  std=  196.5129  min=74845.0000  max=75846.0000
+    throughput / step            mean=     15.0947  std=    0.0393  min=   14.9690  max=   15.1692
+    end-to-end wall (s)          mean=     70.1060  std=    5.6817  min=   67.0086  max=  118.8481
+    Σ solver runtime (s)         mean=     65.3604  std=    5.6587  min=   62.2519  max=  113.8795
+    max per-call (s)             mean=      0.9073  std=    5.1314  min=    0.0840  max=   49.5755
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean=  91199.1800  std=19793.7769  min=83565.0000  max=262478.0000
+    Σ LL expanded                mean=25720365.2300  std=2651268.3931  min=24788396.0000  max=48532900.0000
+
+=== ECBS_baseline w=100 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  75604.7200  std=  198.1542  min=75020.0000  max=76019.0000
+    throughput / step            mean=     15.1209  std=    0.0396  min=   15.0040  max=   15.2038
+    end-to-end wall (s)          mean=    324.9836  std=   17.6201  min=  309.5104  max=  395.5000
+    Σ solver runtime (s)         mean=    314.4895  std=    4.4669  min=  304.0444  max=  329.7136
+    max per-call (s)             mean=      1.5247  std=    2.3668  min=    0.4711  max=   15.0661
+    per-call fails               mean=      0.0800  std=    0.2727  min=    0.0000  max=    1.0000
+    Σ HL expanded                mean=  88059.0200  std= 3461.8073  min=82628.0000  max=101768.0000
+    Σ LL expanded                mean=92394433.4800  std=1289265.4459  min=89046275.0000  max=96995278.0000
+
+=== PBS_opts w=5 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  75402.9900  std=  198.4350  min=74897.0000  max=75809.0000
+    throughput / step            mean=     15.0806  std=    0.0397  min=   14.9794  max=   15.1618
+    end-to-end wall (s)          mean=    216.6301  std=    6.3028  min=  209.0279  max=  242.8970
+    Σ solver runtime (s)         mean=    159.4466  std=    4.5459  min=  153.7859  max=  178.2589
+    max per-call (s)             mean=      0.2073  std=    0.0127  min=    0.1877  max=    0.2511
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean= 141441.1700  std= 1208.6921  min=138329.0000  max=145570.0000
+    Σ LL expanded                mean=14751157.2300  std=49232.8976  min=14629238.0000  max=14872607.0000
+
+=== PBS_opts w=10 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  76541.0900  std=  222.1143  min=75947.0000  max=77090.0000
+    throughput / step            mean=     15.3082  std=    0.0444  min=   15.1894  max=   15.4180
+    end-to-end wall (s)          mean=    261.3648  std=    8.4616  min=  250.5164  max=  303.9339
+    Σ solver runtime (s)         mean=    201.9004  std=    6.3301  min=  193.0603  max=  233.3333
+    max per-call (s)             mean=      0.2537  std=    0.0188  min=    0.2305  max=    0.3296
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean= 207461.1600  std= 1593.3085  min=202465.0000  max=212148.0000
+    Σ LL expanded                mean=14738480.9600  std=48682.6749  min=14603643.0000  max=14856693.0000
+
+=== PBS_opts w=20 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  76657.5900  std=  187.2077  min=76204.0000  max=77287.0000
+    throughput / step            mean=     15.3315  std=    0.0374  min=   15.2408  max=   15.4574
+    end-to-end wall (s)          mean=    338.5930  std=    7.3130  min=  324.9284  max=  368.5732
+    Σ solver runtime (s)         mean=    276.4760  std=    5.9312  min=  264.8694  max=  299.5128
+    max per-call (s)             mean=      0.3576  std=    0.0171  min=    0.3295  max=    0.4032
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean= 295733.8200  std= 2315.1532  min=289267.0000  max=301069.0000
+    Σ LL expanded                mean=14795204.3200  std=43192.9481  min=14646081.0000  max=14886395.0000
+
+=== PBS_opts w=100 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  76644.6500  std=  197.4143  min=76144.0000  max=77050.0000
+    throughput / step            mean=     15.3289  std=    0.0395  min=   15.2288  max=   15.4100
+    end-to-end wall (s)          mean=    403.1635  std=   11.0397  min=  389.1321  max=  450.6636
+    Σ solver runtime (s)         mean=    338.9047  std=    9.0397  min=  327.3682  max=  377.1239
+    max per-call (s)             mean=      0.4823  std=    0.0382  min=    0.4186  max=    0.6244
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean= 351087.2400  std= 2422.8381  min=344884.0000  max=356657.0000
+    Σ LL expanded                mean=14828098.7400  std=45634.6164  min=14727542.0000  max=14922971.0000
+
+=== PBS_section w=5 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  75476.3900  std=  193.1885  min=74783.0000  max=75907.0000
+    throughput / step            mean=     15.0953  std=    0.0386  min=   14.9566  max=   15.1814
+    end-to-end wall (s)          mean=     80.3386  std=    2.5866  min=   77.0512  max=   93.0133
+    Σ solver runtime (s)         mean=     20.2869  std=    0.2817  min=   19.6241  max=   21.1598
+    max per-call (s)             mean=      0.0294  std=    0.0024  min=    0.0254  max=    0.0410
+    per-call fails               mean=      1.7200  std=    1.2955  min=    0.0000  max=    7.0000
+    Σ HL expanded                mean= 130674.0500  std= 1158.5366  min=128587.0000  max=133634.0000
+    Σ LL expanded                mean=14696261.6000  std=49738.8401  min=14553744.0000  max=14826724.0000
+    fallback count (section)     mean=      1.7200  std=    1.2955  min=    0.0000  max=    7.0000
+
+=== PBS_section w=10 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  76455.5500  std=  210.0544  min=75800.0000  max=77088.0000
+    throughput / step            mean=     15.2911  std=    0.0420  min=   15.1600  max=   15.4176
+    end-to-end wall (s)          mean=     92.1804  std=    1.8811  min=   89.2944  max=  100.6527
+    Σ solver runtime (s)         mean=     31.0571  std=    0.4732  min=   30.1441  max=   32.3433
+    max per-call (s)             mean=      0.0489  std=    0.0343  min=    0.0399  max=    0.3512
+    per-call fails               mean=      0.4800  std=    0.6739  min=    0.0000  max=    3.0000
+    Σ HL expanded                mean= 192304.7300  std= 1730.4269  min=189054.0000  max=197003.0000
+    Σ LL expanded                mean=14727793.8800  std=47675.9567  min=14562495.0000  max=14839567.0000
+    fallback count (section)     mean=      0.4800  std=    0.6739  min=    0.0000  max=    3.0000
+
+=== PBS_section w=20 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  76560.8700  std=  185.5969  min=76006.0000  max=77016.0000
+    throughput / step            mean=     15.3122  std=    0.0371  min=   15.2012  max=   15.4032
+    end-to-end wall (s)          mean=    120.4927  std=    2.8213  min=  115.0511  max=  130.9680
+    Σ solver runtime (s)         mean=     55.2757  std=    0.9321  min=   53.1319  max=   58.0117
+    max per-call (s)             mean=      0.1034  std=    0.1304  min=    0.0745  max=    1.3164
+    per-call fails               mean=      0.7700  std=    0.8147  min=    0.0000  max=    3.0000
+    Σ HL expanded                mean= 284943.9200  std= 2808.6578  min=278588.0000  max=294115.0000
+    Σ LL expanded                mean=14777030.3200  std=40918.5004  min=14655137.0000  max=14874795.0000
+    fallback count (section)     mean=      0.7700  std=    0.8147  min=    0.0000  max=    3.0000
+
+=== PBS_section w=100 ===
+  sim_complete:    98/100 (98.0%)
+    tasks finished               mean=  75543.9000  std= 7273.9704  min=20765.0000  max=77028.0000
+    throughput / step            mean=     15.1088  std=    1.4548  min=    4.1530  max=   15.4056
+    end-to-end wall (s)          mean=    149.5046  std=   15.4768  min=   41.8749  max=  167.4055
+    Σ solver runtime (s)         mean=     80.7021  std=    7.8368  min=   23.8568  max=   86.9084
+    max per-call (s)             mean=      0.2707  std=    0.4046  min=    0.1217  max=    2.8928
+    per-call fails               mean=      1.1300  std=    1.1340  min=    0.0000  max=    4.0000
+    Σ HL expanded                mean= 342329.0900  std=32745.8894  min=98121.0000  max=357384.0000
+    Σ LL expanded                mean=14592529.6300  std=1404285.6987  min=4029672.0000  max=14886017.0000
+    fallback count (section)     mean=      1.1531  std=    1.1338  min=    0.0000  max=    4.0000

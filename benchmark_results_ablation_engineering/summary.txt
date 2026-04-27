@@ -1,0 +1,36 @@
+Engineering ablation (100 seeds): PBS_pure (RHCR_PBS_OPTS=0)
+w=[5, 10, 100]  m=500  sim_time=5000
+Total wall: 9638.5s (2.68 h)
+
+=== PBS_pure w=5 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  75489.8800  std=  185.7896  min=74791.0000  max=75918.0000
+    throughput / step            mean=     15.0980  std=    0.0372  min=   14.9582  max=   15.1836
+    end-to-end wall (s)          mean=    227.5509  std=   15.0883  min=  213.9245  max=  290.0243
+    Σ solver runtime (s)         mean=    168.8208  std=   10.8439  min=  158.3200  max=  213.8141
+    max per-call (s)             mean=      0.2245  std=    0.0212  min=    0.1977  max=    0.3082
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean= 150502.7800  std= 1340.5288  min=147319.0000  max=154560.0000
+    Σ LL expanded                mean=14742808.5600  std=43950.5013  min=14628337.0000  max=14861164.0000
+
+=== PBS_pure w=10 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  76639.2700  std=  195.7176  min=76089.0000  max=77051.0000
+    throughput / step            mean=     15.3279  std=    0.0391  min=   15.2178  max=   15.4102
+    end-to-end wall (s)          mean=    273.7758  std=   12.2140  min=  262.6397  max=  336.6539
+    Σ solver runtime (s)         mean=    214.0684  std=    9.1678  min=  205.1129  max=  260.3902
+    max per-call (s)             mean=      0.2716  std=    0.0175  min=    0.2501  max=    0.3547
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean= 225687.3300  std= 1747.3556  min=221860.0000  max=230827.0000
+    Σ LL expanded                mean=14731669.2100  std=45214.1995  min=14610665.0000  max=14856982.0000
+
+=== PBS_pure w=100 ===
+  sim_complete:    100/100 (100.0%)
+    tasks finished               mean=  76890.1200  std=  213.3410  min=76405.0000  max=77490.0000
+    throughput / step            mean=     15.3780  std=    0.0427  min=   15.2810  max=   15.4980
+    end-to-end wall (s)          mean=    453.0830  std=   18.9522  min=  435.3920  max=  537.2904
+    Σ solver runtime (s)         mean=    387.8686  std=   15.6895  min=  372.0884  max=  457.6367
+    max per-call (s)             mean=      0.5943  std=    0.0566  min=    0.4896  max=    0.7724
+    per-call fails               mean=      0.0000  std=    0.0000  min=    0.0000  max=    0.0000
+    Σ HL expanded                mean= 398611.1600  std= 2663.4015  min=392193.0000  max=405142.0000
+    Σ LL expanded                mean=14810882.9900  std=46848.4863  min=14655106.0000  max=14912073.0000

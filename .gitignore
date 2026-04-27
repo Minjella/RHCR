@@ -11,3 +11,8 @@ cmake*
 idea.pptx
 ~*
 maps
+
+# Benchmark raw logs (large, reproducible)
+benchmark_results_*/logs/
+benchmark_results_*_stdout.log
+benchmark_quick_improved/
